@@ -1,11 +1,24 @@
-# Python-generated files
+# Byte-compiled / optimized / DLL files
 __pycache__/
-*.py[oc]
+*.pyc
+*.pyo
+*.pyd
+
+# Distribution / packaging
+.DS_Store
 build/
 dist/
-wheels/
-*.egg-info
+*.egg-info/
+*.whl
 
-# Virtual environments
-.venv
+# IDE files
+.idea/
+.vscode/
+*.swp
+
+# Environment
 .env
+
+# Other
+*.log
+*.tmp
