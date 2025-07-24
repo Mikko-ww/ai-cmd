@@ -1,6 +1,7 @@
 import os
 import requests
 import sys
+import pyperclip
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -35,7 +36,10 @@ def main():
     if len(sys.argv) > 1:
         prompt = " ".join(sys.argv[1:])
         command = get_shell_command(prompt)
-        print(command)
+        if command:
+            print(command)
+            pyperclip.copy(command)
+            # print("\nCopied to clipboard!")
     else:
         print("Usage: python uv_py/main.py <your natural language prompt>")
 

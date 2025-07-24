@@ -16,6 +16,8 @@ dist/
 .vscode/
 *.swp
 
+.venv/
+.ruff_cache/
 # Environment
 .env
 
