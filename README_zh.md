@@ -11,9 +11,9 @@
     ```
 
 2.  **安装依赖：**
-    本项目使用 [Rye](https://rye-up.com/) 进行包管理。
+    本项目使用 [uv](https://docs.astral.sh/uv/) 进行包管理。
     ```bash
-    rye sync
+    uv sync
     ```
 
 ## 配置

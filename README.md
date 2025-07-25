@@ -11,9 +11,9 @@
     ```
 
 2.  **Install dependencies:**
-    This project uses [Rye](https://rye-up.com/) for package management.
+    This project uses [uv](https://docs.astral.sh/uv/) for package management.
     ```bash
-    rye sync
+    uv sync
     ```
 
 ## Configuration
