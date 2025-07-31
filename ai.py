@@ -3,8 +3,10 @@ import requests
 import sys
 import pyperclip
 from dotenv import load_dotenv
+from config_manager import ConfigManager
 
 load_dotenv()
+
 
 def get_shell_command(prompt):
     api_key = os.getenv("AI_CMD_OPENROUTER_API_KEY")
