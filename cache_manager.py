@@ -9,6 +9,7 @@ from datetime import datetime, timedelta
 from typing import Optional, List, Dict, Any
 from database_manager import SafeDatabaseManager
 from config_manager import ConfigManager
+from error_handler import GracefulDegradationManager, safe_cache_operation
 
 
 class CacheEntry:
@@ -71,23 +72,27 @@ class CacheEntry:
 class CacheManager:
     """缓存管理器，提供完整的 CRUD 操作"""
     
-    def __init__(self, config_manager: Optional[ConfigManager] = None):
+    def __init__(self, config_manager: Optional[ConfigManager] = None, 
+                 degradation_manager: Optional[GracefulDegradationManager] = None):
         """初始化缓存管理器"""
         self.config = config_manager or ConfigManager()
         self.db = SafeDatabaseManager(self.config)
         self.current_os = platform.system()
         self.current_shell = os.environ.get('SHELL', '').split('/')[-1] or 'unknown'
+        
+        # 错误处理和优雅降级
+        self.degradation_manager = degradation_manager or GracefulDegradationManager()
     
     def save_cache_entry(self, query: str, command: str, os_type: Optional[str] = None, 
                         shell_type: Optional[str] = None) -> Optional[str]:
         """保存新的缓存条目"""
-        if not self.db.is_available:
-            return None
-            
-        try:
+        def cache_operation():
+            if not self.db.is_available:
+                return None
+                
             query_hash = self.db.generate_query_hash(query)
-            os_type = os_type or self.current_os
-            shell_type = shell_type or self.current_shell
+            os_type_final = os_type or self.current_os
+            shell_type_final = shell_type or self.current_shell
             
             # 检查是否已存在相同的缓存条目
             existing_entry = self.find_exact_match(query)
@@ -104,7 +109,7 @@ class CacheManager:
                 VALUES (?, ?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
             """
             
-            result = self.db.execute_query(insert_sql, (query, query_hash, command, os_type, shell_type))
+            result = self.db.execute_query(insert_sql, (query, query_hash, command, os_type_final, shell_type_final))
             
             if result and isinstance(result, int) and result > 0:
                 print(f"Cache entry saved: {query_hash[:8]}...")
@@ -112,17 +117,20 @@ class CacheManager:
             else:
                 print(f"Warning: Failed to save cache entry")
                 return None
-                
-        except Exception as e:
-            print(f"Warning: Error saving cache entry: {e}")
+        
+        def fallback_operation():
             return None
+        
+        return self.degradation_manager.with_cache_fallback(
+            cache_operation, fallback_operation, "save_cache_entry"
+        )
     
     def find_exact_match(self, query: str) -> Optional[CacheEntry]:
         """查找精确匹配的缓存条目"""
-        if not self.db.is_available:
-            return None
-            
-        try:
+        def cache_operation():
+            if not self.db.is_available:
+                return None
+                
             query_hash = self.db.generate_query_hash(query)
             
             select_sql = """
@@ -139,47 +147,58 @@ class CacheManager:
                 return CacheEntry.from_db_row(result[0])
             else:
                 return None
-                
-        except Exception as e:
-            print(f"Warning: Error finding exact match: {e}")
+        
+        def fallback_operation():
             return None
+        
+        return self.degradation_manager.with_cache_fallback(
+            cache_operation, fallback_operation, "find_exact_match"
+        )
     
     def update_last_used(self, query_hash: str) -> bool:
         """更新最后使用时间"""
-        if not self.db.is_available:
-            return False
-            
-        try:
+        def cache_operation():
+            if not self.db.is_available:
+                return False
+                
             update_sql = "UPDATE enhanced_cache SET last_used = CURRENT_TIMESTAMP WHERE query_hash = ?"
             result = self.db.execute_query(update_sql, (query_hash,))
             if result and isinstance(result, int):
                 return result > 0
             return False
-        except Exception as e:
-            print(f"Warning: Error updating last used: {e}")
+        
+        def fallback_operation():
             return False
+        
+        return self.degradation_manager.with_cache_fallback(
+            cache_operation, fallback_operation, "update_last_used"
+        )
     
     def delete_cache_entry(self, query_hash: str) -> bool:
         """删除缓存条目"""
-        if not self.db.is_available:
-            return False
-            
-        try:
+        def cache_operation():
+            if not self.db.is_available:
+                return False
+                
             result = self.db.execute_query("DELETE FROM enhanced_cache WHERE query_hash = ?", (query_hash,))
             if result and isinstance(result, int) and result > 0:
                 print(f"Cache entry deleted: {query_hash[:8]}...")
                 return True
             return False
-        except Exception as e:
-            print(f"Warning: Error deleting cache entry: {e}")
+        
+        def fallback_operation():
             return False
+        
+        return self.degradation_manager.with_cache_fallback(
+            cache_operation, fallback_operation, "delete_cache_entry"
+        )
     
     def get_cache_stats(self) -> Dict[str, Any]:
         """获取缓存统计信息"""
-        if not self.db.is_available:
-            return {"status": "unavailable"}
-            
-        try:
+        def cache_operation():
+            if not self.db.is_available:
+                return {"status": "unavailable"}
+                
             stats = {}
             
             # 总缓存条目数
@@ -191,7 +210,19 @@ class CacheManager:
             
             stats['status'] = 'available'
             return stats
-            
-        except Exception as e:
-            print(f"Warning: Error getting cache stats: {e}")
-            return {"status": "error", "error": str(e)}
+        
+        def fallback_operation():
+            return {"status": "error", "total_entries": 0}
+        
+        return self.degradation_manager.with_cache_fallback(
+            cache_operation, fallback_operation, "get_cache_stats"
+        )
+    
+    def get_error_status(self) -> Dict[str, Any]:
+        """获取错误处理状态"""
+        return self.degradation_manager.get_status()
+    
+    def reset_error_state(self):
+        """重置错误状态"""
+        self.degradation_manager.force_reset()
+        print("Cache error state has been reset.")
