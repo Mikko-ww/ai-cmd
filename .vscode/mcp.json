@@ -1,0 +1,18 @@
+{
+    "inputs": [
+    ],
+    "servers": {
+        "shrimp-task-manager": {
+            "command": "npx",
+            "args": [
+                "-y",
+                "mcp-shrimp-task-manager"
+            ],
+            "env": {
+                "DATA_DIR": "${workspaceFolder}/.task-manager-data",
+                "TEMPLATES_USE": "en",
+                "ENABLE_GUI": "false"
+            }
+        }
+    }
+}

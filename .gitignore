@@ -13,7 +13,8 @@ dist/
 
 # IDE files
 .idea/
-.vscode/
+.vscode/*
+!.vscode/mcp.json
 *.swp
 
 .venv/
