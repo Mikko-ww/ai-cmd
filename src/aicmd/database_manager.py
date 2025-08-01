@@ -9,7 +9,7 @@ import hashlib
 import threading
 from pathlib import Path
 from datetime import datetime
-from config_manager import ConfigManager
+from .config_manager import ConfigManager
 
 
 class SafeDatabaseManager:

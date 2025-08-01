@@ -6,10 +6,10 @@
 import platform
 import os
 from datetime import datetime, timedelta
-from typing import Optional, List, Dict, Any
-from database_manager import SafeDatabaseManager
-from config_manager import ConfigManager
-from error_handler import GracefulDegradationManager, safe_cache_operation
+from typing import Optional, List, Dict, Any, Tuple
+from .database_manager import SafeDatabaseManager
+from .config_manager import ConfigManager
+from .error_handler import GracefulDegradationManager, safe_cache_operation
 
 
 class CacheEntry:
@@ -216,6 +216,27 @@ class CacheManager:
         
         return self.degradation_manager.with_cache_fallback(
             cache_operation, fallback_operation, "get_cache_stats"
+        )
+    
+    def get_all_cached_queries(self) -> List[Tuple[str, str]]:
+        """获取所有缓存查询，用于相似性匹配"""
+        def cache_operation():
+            if not self.db.is_available:
+                return []
+                
+            select_sql = "SELECT query, command FROM enhanced_cache ORDER BY last_used DESC"
+            result = self.db.execute_query(select_sql, fetch=True)
+            
+            if result and isinstance(result, list):
+                return [(row[0], row[1]) for row in result]
+            else:
+                return []
+        
+        def fallback_operation():
+            return []
+        
+        return self.degradation_manager.with_cache_fallback(
+            cache_operation, fallback_operation, "get_all_cached_queries"
         )
     
     def get_error_status(self) -> Dict[str, Any]:
