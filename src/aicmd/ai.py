@@ -1,6 +1,6 @@
 import os
 import requests
-import sys
+import argparse
 import pyperclip
 from dotenv import load_dotenv
 from .error_handler import GracefulDegradationManager
@@ -240,69 +240,63 @@ def get_shell_command(prompt, force_api=False):
 def main():
     """主函数，集成智能缓存和用户交互功能"""
     try:
-        if len(sys.argv) < 2:
-            print("Usage: python ai.py <your natural language prompt>")
-            print("  --force-api: Force API call, bypass cache")
-            print("  --disable-interactive: Disable interactive mode for this request")
-            print("  --reset-errors: Reset error state")
-            print("  --stats: Show cache and interaction statistics")
-            print("  --help: Show this help message")
-            return
+        # 创建ArgumentParser实例
+        parser = argparse.ArgumentParser(
+            description="AI Command Line Tool v0.2.1 - Convert natural language to shell commands",
+            add_help=False  # 我们自定义help处理
+        )
+        
+        # 添加现有的所有参数
+        parser.add_argument('prompt', nargs='*', help='Natural language prompt for command generation')
+        parser.add_argument('--force-api', action='store_true', 
+                          help='Force API call, bypass cache')
+        parser.add_argument('--disable-interactive', action='store_true',
+                          help='Disable interactive mode for this request')
+        parser.add_argument('--stats', action='store_true',
+                          help='Show cache and interaction statistics')
+        parser.add_argument('--reset-errors', action='store_true',
+                          help='Reset error state')
+        parser.add_argument('--help', action='store_true',
+                          help='Show this help message')
         
         # 解析命令行参数
-        args = sys.argv[1:]
-        force_api = False
-        disable_interactive = False
-        show_stats = False
-        reset_errors = False
-        
-        # 处理特殊参数
-        filtered_args = []
-        for arg in args:
-            if arg == "--force-api":
-                force_api = True
-            elif arg == "--disable-interactive":
-                disable_interactive = True
-            elif arg == "--stats":
-                show_stats = True
-            elif arg == "--reset-errors":
-                reset_errors = True
-            elif arg == "--help":
-                print("AI Command Line Tool v0.2.0")
-                print("\nUsage: python ai.py <your natural language prompt> [options]")
-                print("\nOptions:")
-                print("  --force-api          Force API call, bypass cache")
-                print("  --disable-interactive Disable interactive mode for this request")
-                print("  --reset-errors       Reset error state")
-                print("  --stats             Show cache and interaction statistics")
-                print("  --help              Show this help message")
-                print("\nExamples:")
-                print("  python ai.py \"list all files\"")
-                print("  python ai.py \"create new directory\" --force-api")
-                print("  python ai.py --stats")
-                return
-            else:
-                filtered_args.append(arg)
+        args = parser.parse_args()
         
         # 处理特殊命令
-        if reset_errors:
+        if args.help:
+            print("AI Command Line Tool v0.2.1")
+            print("\nUsage: aicmd <your natural language prompt> [options]")
+            print("\nOptions:")
+            print("  --force-api          Force API call, bypass cache")
+            print("  --disable-interactive Disable interactive mode for this request")
+            print("  --reset-errors       Reset error state")
+            print("  --stats             Show cache and interaction statistics")
+            print("  --help              Show this help message")
+            print("\nExamples:")
+            print("  aicmd \"list all files\"")
+            print("  aicmd \"create new directory\" --force-api")
+            print("  aicmd --stats")
+            return
+            
+        if args.reset_errors:
             degradation_manager.force_reset()
             print("✓ Error state has been reset.")
             return
         
-        if show_stats:
+        if args.stats:
             print_system_stats()
             return
         
         # 检查是否有实际的查询
-        if not filtered_args:
+        if not args.prompt:
             print("Error: No query provided. Use --help for usage information.")
             return
         
-        prompt = " ".join(filtered_args)
+        prompt = " ".join(args.prompt)
         
         # 临时禁用交互模式
-        if disable_interactive:
+        force_api = args.force_api
+        if args.disable_interactive:
             force_api = True
         
         # 获取命令
@@ -310,7 +304,7 @@ def main():
         
         if command:
             # 如果是非交互模式或强制API模式，显示命令并复制
-            if force_api or disable_interactive:
+            if force_api or args.disable_interactive:
                 print(command)
                 try:
                     pyperclip.copy(command)

@@ -1,238 +1,428 @@
 {
   "tasks": [
     {
-      "id": "8181ccbd-c3a7-42fc-89ef-5138ce0de0a2",
-      "name": "配置管理系统和环境变量处理",
-      "description": "实现 ConfigManager 类，支持交互模式的开关控制和所有缓存相关配置项的管理。确保配置错误不影响核心功能，提供合理的默认值和向后兼容性。",
-      "notes": "这是整个系统的基础组件，必须确保异常安全性。配置项要有详细的文档说明和合理的默认值。",
+      "id": "b79ac6da-8e99-4cb1-b697-3a92e8e27d10",
+      "name": "升级版本号到0.2.1",
+      "description": "更新项目版本号从0.2.0到0.2.1，涉及pyproject.toml和__init__.py文件的版本信息更新，为新版本发布做准备。",
+      "notes": "这是v0.2.1开发的第一步，确保所有版本信息一致",
       "status": "completed",
       "dependencies": [],
-      "createdAt": "2025-07-31T18:23:35.132Z",
-      "updatedAt": "2025-07-31T18:32:58.154Z",
+      "createdAt": "2025-08-01T09:14:30.104Z",
+      "updatedAt": "2025-08-01T09:16:09.020Z",
       "relatedFiles": [
         {
-          "path": "ai.py",
+          "path": "pyproject.toml",
           "type": "TO_MODIFY",
-          "description": "添加配置管理类",
-          "lineStart": 1,
-          "lineEnd": 20
+          "description": "更新version字段",
+          "lineStart": 3,
+          "lineEnd": 3
         },
         {
-          "path": ".env.example",
+          "path": "src/aicmd/__init__.py",
           "type": "TO_MODIFY",
-          "description": "添加新的环境变量示例",
-          "lineStart": 1,
-          "lineEnd": 10
-        }
-      ],
-      "implementationGuide": "创建 ConfigManager 类：\\n\\n```python\\nclass ConfigManager:\\n    def __init__(self):\\n        self.config = {\\n            'interactive_mode': self._get_bool('AI_CMD_INTERACTIVE_MODE', False),\\n            'confidence_threshold': self._get_float('AI_CMD_CONFIDENCE_THRESHOLD', 0.8),\\n            'auto_copy_threshold': self._get_float('AI_CMD_AUTO_COPY_THRESHOLD', 0.9),\\n            'positive_weight': self._get_float('AI_CMD_POSITIVE_WEIGHT', 0.2),\\n            'negative_weight': self._get_float('AI_CMD_NEGATIVE_WEIGHT', 0.5)\\n        }\\n        \\n    def _get_bool(self, key, default):\\n        # 安全的布尔值解析，异常时返回默认值\\n        \\n    def _get_float(self, key, default):\\n        # 安全的浮点数解析，异常时返回默认值\\n```\\n\\n重点：所有配置解析异常都要有降级处理，确保不影响主功能。",
-      "verificationCriteria": "所有配置项能正确读取，异常配置不影响程序启动，配置变更能立即生效，提供配置验证和错误提示功能。",
-      "analysisResult": "基于用户创新的\"复制确认反馈机制\"，为 aicmd v0.2.0 构建智能缓存系统。采用配置驱动的交互模式，通过用户的复制确认行为收集反馈，建立渐进式置信度模型。核心原则：保持向后兼容、质量优先、风险可控、增量交付。",
-      "summary": "ConfigManager 类已成功实现，包含了完整的环境变量读取、类型转换、异常处理和配置验证功能。该类支持所有 8 个缓存相关配置项，具有健壮的错误处理机制，能够安全地处理无效配置值并提供有意义的警告信息。通过测试验证，配置系统工作正常，为后续的缓存和数据库功能提供了可靠的配置基础。",
-      "completedAt": "2025-07-31T18:32:58.152Z"
-    },
-    {
-      "id": "cb4eb872-85cf-444b-817a-3dfa1017a63c",
-      "name": "数据库 Schema 设计和安全初始化",
-      "description": "设计扩展的数据库结构，支持缓存存储、置信度记录和反馈历史。实现安全的数据库初始化，包括路径创建、权限处理和异常降级机制。",
-      "notes": "数据库初始化必须是幂等的，支持跨平台路径处理。任何数据库错误都不能影响主功能的正常使用。",
-      "status": "completed",
-      "dependencies": [
-        {
-          "taskId": "8181ccbd-c3a7-42fc-89ef-5138ce0de0a2"
-        }
-      ],
-      "createdAt": "2025-07-31T18:23:35.132Z",
-      "updatedAt": "2025-07-31T18:43:33.979Z",
-      "relatedFiles": [
-        {
-          "path": "ai.py",
-          "type": "TO_MODIFY",
-          "description": "添加数据库管理类",
-          "lineStart": 1,
-          "lineEnd": 50
-        }
-      ],
-      "implementationGuide": "设计数据库结构：\\n\\n```sql\\nCREATE TABLE enhanced_cache (\\n    id INTEGER PRIMARY KEY AUTOINCREMENT,\\n    query TEXT NOT NULL,\\n    query_hash TEXT NOT NULL,\\n    command TEXT NOT NULL,\\n    confidence_score REAL DEFAULT 0.0,\\n    confirmation_count INTEGER DEFAULT 0,\\n    rejection_count INTEGER DEFAULT 0,\\n    last_used DATETIME DEFAULT CURRENT_TIMESTAMP,\\n    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,\\n    os_type TEXT,\\n    shell_type TEXT\\n);\\n\\nCREATE TABLE feedback_history (\\n    id INTEGER PRIMARY KEY AUTOINCREMENT,\\n    query_hash TEXT NOT NULL,\\n    command TEXT NOT NULL,\\n    action TEXT NOT NULL,\\n    timestamp DATETIME DEFAULT CURRENT_TIMESTAMP\\n);\\n```\\n\\n实现 SafeDatabaseManager 类，包含完整的错误处理和降级机制。",
-      "verificationCriteria": "数据库能在各平台正确创建，表结构完整，索引生效，异常情况下能优雅降级到无缓存模式，支持数据库文件的备份和恢复。",
-      "analysisResult": "基于用户创新的\"复制确认反馈机制\"，为 aicmd v0.2.0 构建智能缓存系统。采用配置驱动的交互模式，通过用户的复制确认行为收集反馈，建立渐进式置信度模型。核心原则：保持向后兼容、质量优先、风险可控、增量交付。",
-      "summary": "SafeDatabaseManager 类已成功实现，完整支持数据库 Schema 设计和安全初始化。实现了 enhanced_cache 和 feedback_history 两个核心表，包含所有必要的字段和索引。具备跨平台路径处理能力，支持自定义缓存目录，提供完整的异常处理和优雅降级机制。数据库初始化是幂等的，支持备份恢复功能，确保在任何异常情况下都不会影响主功能的正常使用。",
-      "completedAt": "2025-07-31T18:43:33.977Z"
-    },
-    {
-      "id": "25bd6907-a4f1-496e-9cad-aeca0db9513c",
-      "name": "基础缓存管理器和 CRUD 操作",
-      "description": "实现 CacheManager 类，提供缓存的基础增删改查操作。包括缓存条目的存储、检索、更新和删除功能，确保数据操作的原子性和一致性。",
-      "notes": "这是缓存系统的核心组件，必须保证数据一致性。初版先实现基础功能，后续版本再优化性能。",
-      "status": "completed",
-      "dependencies": [
-        {
-          "taskId": "cb4eb872-85cf-444b-817a-3dfa1017a63c"
-        }
-      ],
-      "createdAt": "2025-07-31T18:23:35.132Z",
-      "updatedAt": "2025-07-31T18:54:29.200Z",
-      "relatedFiles": [
-        {
-          "path": "ai.py",
-          "type": "TO_MODIFY",
-          "description": "添加缓存管理器",
-          "lineStart": 1,
-          "lineEnd": 100
-        }
-      ],
-      "implementationGuide": "实现 CacheManager 类：\\n\\n```python\\nclass CacheManager:\\n    def __init__(self, config_manager):\\n        self.config = config_manager\\n        self.db = SafeDatabaseManager()\\n        \\n    def save_cache_entry(self, query, command, os_type=None, shell_type=None):\\n        # 保存新的缓存条目，包含基础信息\\n        \\n    def find_exact_match(self, query):\\n        # 精确匹配查询\\n        \\n    def find_similar_queries(self, query, limit=10):\\n        # 查找相似的查询（初版使用简单字符串匹配）\\n        \\n    def update_usage_stats(self, cache_id, confirmed=True):\\n        # 更新使用统计\\n        \\n    def cleanup_old_entries(self, days=90):\\n        # 清理过期条目\\n```\\n\\n重点：所有数据库操作都要有事务保护和异常处理。",
-      "verificationCriteria": "能正确存储和检索缓存条目，数据操作具有事务性，异常情况下数据不会损坏，支持并发访问安全性。",
-      "analysisResult": "基于用户创新的\"复制确认反馈机制\"，为 aicmd v0.2.0 构建智能缓存系统。采用配置驱动的交互模式，通过用户的复制确认行为收集反馈，建立渐进式置信度模型。核心原则：保持向后兼容、质量优先、风险可控、增量交付。",
-      "summary": "CacheManager 类已成功实现，提供了完整的缓存 CRUD 操作功能。实现了 CacheEntry 数据模型和 CacheManager 核心类，支持缓存条目的保存、精确匹配查找、使用统计更新、删除操作等基础功能。通过测试验证，能够正确存储和检索缓存条目，数据操作具有事务性保护，异常情况下不会损坏数据。修复了类型检查问题，确保代码的类型安全性。为后续的置信度计算和智能匹配功能提供了可靠的数据操作基础。",
-      "completedAt": "2025-07-31T18:54:29.199Z"
-    },
-    {
-      "id": "9db98845-47c1-4ef7-954b-d4cf3ff9d39f",
-      "name": "错误处理和优雅降级机制",
-      "description": "实现全面的错误处理系统，确保缓存功能的任何异常都不会影响原有的 API 调用功能。包括数据库异常、网络异常、配置异常等各种情况的处理。",
-      "notes": "这是保证系统稳定性的关键组件。宁可禁用缓存也不能影响用户的正常使用。",
-      "status": "completed",
-      "dependencies": [
-        {
-          "taskId": "25bd6907-a4f1-496e-9cad-aeca0db9513c"
-        }
-      ],
-      "createdAt": "2025-07-31T18:23:35.132Z",
-      "updatedAt": "2025-07-31T19:15:40.887Z",
-      "relatedFiles": [
-        {
-          "path": "ai.py",
-          "type": "TO_MODIFY",
-          "description": "添加错误处理机制",
-          "lineStart": 1,
-          "lineEnd": 50
-        }
-      ],
-      "implementationGuide": "实现全面的异常处理机制：\\n\\n```python\\nclass GracefulDegradationManager:\\n    def __init__(self):\\n        self.cache_available = True\\n        self.error_count = 0\\n        \\n    def with_cache_fallback(self, cache_operation, fallback_operation):\\n        try:\\n            if self.cache_available:\\n                return cache_operation()\\n        except Exception as e:\\n            self.handle_cache_error(e)\\n            return fallback_operation()\\n            \\n    def handle_cache_error(self, error):\\n        # 记录错误，决定是否禁用缓存\\n        self.error_count += 1\\n        if self.error_count > 3:\\n            self.cache_available = False\\n```\\n\\n确保所有缓存相关操作都通过这个机制保护。",
-      "verificationCriteria": "各种异常情况下程序不会崩溃，能自动降级到原有功能，错误信息有适当的日志记录，支持错误恢复机制。",
-      "analysisResult": "基于用户创新的\"复制确认反馈机制\"，为 aicmd v0.2.0 构建智能缓存系统。采用配置驱动的交互模式，通过用户的复制确认行为收集反馈，建立渐进式置信度模型。核心原则：保持向后兼容、质量优先、风险可控、增量交付。",
-      "summary": "成功实现了全面的错误处理和优雅降级机制。创建了GracefulDegradationManager类处理各种异常情况，集成了缓存保护、错误分类、降级决策、状态监控和恢复机制。所有缓存操作都通过错误处理保护，确保任何异常都不会影响原有API调用功能。系统能够在数据库、配置、网络等各种错误情况下自动降级并继续提供服务。错误处理机制包括详细的日志记录、错误统计、健康检查和状态重置功能，确保系统稳定性和可维护性。",
-      "completedAt": "2025-07-31T19:15:40.885Z"
-    },
-    {
-      "id": "34994ad8-357f-4fd4-84ec-1b7b1cd765b8",
-      "name": "简单查询匹配算法",
-      "description": "实现基础的查询匹配算法，优先精确匹配，然后是简单的相似性匹配。支持查询标准化和哈希生成，为后续的智能匹配打下基础。",
-      "notes": "初版使用简单算法，重点是稳定性和正确性。后续版本再优化匹配精度。",
-      "status": "completed",
-      "dependencies": [],
-      "createdAt": "2025-07-31T18:23:35.132Z",
-      "updatedAt": "2025-08-01T03:55:19.071Z",
-      "relatedFiles": [
-        {
-          "path": "ai.py",
-          "type": "TO_MODIFY",
-          "description": "添加查询匹配算法",
-          "lineStart": 1,
-          "lineEnd": 80
-        }
-      ],
-      "implementationGuide": "实现 QueryMatcher 类：\\n\\n```python\\nclass QueryMatcher:\\n    def __init__(self):\\n        # 基础同义词映射\\n        self.synonyms = {\\n            'list': ['show', 'display', 'ls'],\\n            'create': ['make', 'new', 'mkdir'],\\n            'delete': ['remove', 'rm', 'del']\\n        }\\n        \\n    def normalize_query(self, query):\\n        # 标准化：小写、去标点、同义词替换\\n        words = re.findall(r'\\\\w+', query.lower())\\n        return self.apply_synonyms(words)\\n        \\n    def calculate_similarity(self, query1, query2):\\n        # 简单的 Jaccard 相似度\\n        words1 = set(self.normalize_query(query1))\\n        words2 = set(self.normalize_query(query2))\\n        intersection = words1 & words2\\n        union = words1 | words2\\n        return len(intersection) / len(union) if union else 0\\n        \\n    def get_query_hash(self, query):\\n        # 生成标准化哈希\\n        normalized = ' '.join(sorted(self.normalize_query(query)))\\n        return hashlib.md5(normalized.encode()).hexdigest()\\n```",
-      "verificationCriteria": "能正确处理各种查询格式，相似度计算结果合理，哈希生成稳定一致，支持中英文混合查询。",
-      "analysisResult": "基于用户创新的\"复制确认反馈机制\"，为 aicmd v0.2.0 构建智能缓存系统。采用配置驱动的交互模式，通过用户的复制确认行为收集反馈，建立渐进式置信度模型。核心原则：保持向后兼容、质量优先、风险可控、增量交付。",
-      "summary": "成功实现QueryMatcher类，包含查询标准化、相似度计算、哈希生成等核心功能。支持中英文查询，18个同义词组，84个同义词映射。相似度计算结合Jaccard和序列相似度算法，精确匹配识别准确。测试验证所有功能正常，为后续智能缓存匹配奠定坚实基础。",
-      "completedAt": "2025-08-01T03:55:19.064Z"
-    },
-    {
-      "id": "80e945cf-2716-4971-a4a0-2404a0b83bb7",
-      "name": "基础置信度计算",
-      "description": "实现简化版的置信度计算算法，基于确认和拒绝次数的线性模型。为用户反馈提供量化的信任度评估，支持置信度的动态更新。",
-      "notes": "使用简化的线性模型，避免复杂的数学函数。重点是算法的可理解性和稳定性。",
-      "status": "completed",
-      "dependencies": [
-        {
-          "taskId": "25bd6907-a4f1-496e-9cad-aeca0db9513c"
-        }
-      ],
-      "createdAt": "2025-07-31T18:23:35.132Z",
-      "updatedAt": "2025-08-01T04:15:42.586Z",
-      "relatedFiles": [
-        {
-          "path": "ai.py",
-          "type": "TO_MODIFY",
-          "description": "添加置信度计算",
-          "lineStart": 1,
-          "lineEnd": 60
-        }
-      ],
-      "implementationGuide": "实现 ConfidenceCalculator 类：\\n\\n```python\\nclass ConfidenceCalculator:\\n    def __init__(self, config_manager):\\n        self.positive_weight = config_manager.get('positive_weight', 0.2)\\n        self.negative_weight = config_manager.get('negative_weight', 0.5)\\n        \\n    def calculate_confidence(self, confirmation_count, rejection_count):\\n        # 简化的线性模型\\n        positive_score = confirmation_count * self.positive_weight\\n        negative_score = rejection_count * self.negative_weight\\n        \\n        # 避免负数，使用简单的归一化\\n        raw_score = positive_score - negative_score\\n        confidence = max(0.0, min(1.0, raw_score / (positive_score + negative_score + 1)))\\n        return confidence\\n        \\n    def update_feedback(self, query_hash, command, confirmed):\\n        # 更新反馈记录和置信度\\n        cache_entry = self.cache_manager.get_cache_by_hash(query_hash)\\n        if cache_entry:\\n            if confirmed:\\n                cache_entry['confirmation_count'] += 1\\n            else:\\n                cache_entry['rejection_count'] += 1\\n            \\n            new_confidence = self.calculate_confidence(\\n                cache_entry['confirmation_count'],\\n                cache_entry['rejection_count']\\n            )\\n            self.cache_manager.update_confidence(cache_entry['id'], new_confidence)\\n```",
-      "verificationCriteria": "置信度计算结果在0-1范围内，多次确认能提升置信度，拒绝能降低置信度，计算过程稳定可靠。",
-      "analysisResult": "基于用户创新的\"复制确认反馈机制\"，为 aicmd v0.2.0 构建智能缓存系统。采用配置驱动的交互模式，通过用户的复制确认行为收集反馈，建立渐进式置信度模型。核心原则：保持向后兼容、质量优先、风险可控、增量交付。",
-      "summary": "成功实现ConfidenceCalculator类，基于用户反馈动态计算置信度。采用改进的Sigmoid归一化算法替代简单线性模型，支持时间衰减机制。实现多层次阈值判断（自动复制≥0.9，询问确认0.8-0.9），完整的反馈历史记录和统计分析功能。测试验证算法合理，为智能缓存系统提供科学的信任度评估基础。",
-      "completedAt": "2025-08-01T04:15:42.583Z"
-    },
-    {
-      "id": "1b1d837f-d2cb-49c2-92e9-661c8e3f2b99",
-      "name": "用户交互界面",
-      "description": "实现用户确认界面，支持 Y/N 确认、超时处理、异常中断等情况。设计简洁友好的交互流程，确保不会阻塞用户的正常工作流程。",
-      "notes": "用户体验是关键，要确保交互简洁明了。超时和异常处理要合理，不能让用户卡住。",
-      "status": "completed",
-      "dependencies": [],
-      "createdAt": "2025-07-31T18:23:35.132Z",
-      "updatedAt": "2025-08-01T04:18:27.125Z",
-      "relatedFiles": [
-        {
-          "path": "ai.py",
-          "type": "TO_MODIFY",
-          "description": "添加用户交互函数",
-          "lineStart": 1,
-          "lineEnd": 40
-        }
-      ],
-      "implementationGuide": "实现用户交互函数：\\n\\n```python\\ndef prompt_user_confirmation(command, source='API', timeout=30):\\n    \\\"\\\"\\\"用户确认界面\\\"\\\"\\\"\\n    print(f'> {command}  [{source}]')\\n    \\n    try:\\n        # 设置输入超时\\n        import signal\\n        \\n        def timeout_handler(signum, frame):\\n            raise TimeoutError()\\n            \\n        signal.signal(signal.SIGALRM, timeout_handler)\\n        signal.alarm(timeout)\\n        \\n        response = input('Copy to clipboard? [Y/n]: ').strip().lower()\\n        signal.alarm(0)  # 取消超时\\n        \\n        return response in ['', 'y', 'yes', '是']\\n        \\n    except (KeyboardInterrupt, EOFError):\\n        print('\\\\n✗ Cancelled')\\n        return False\\n    except TimeoutError:\\n        print('\\\\n⏰ Timeout, using default (Yes)')\\n        return True\\n    except Exception as e:\\n        print(f'\\\\n❌ Input error: {e}')\\n        return True  # 默认确认\\n```\\n\\n重点：各种异常情况都要有合理的处理。",
-      "verificationCriteria": "各种用户输入都能正确处理，超时机制正常工作，异常中断不会导致程序崩溃，交互界面清晰友好。",
-      "analysisResult": "基于用户创新的\"复制确认反馈机制\"，为 aicmd v0.2.0 构建智能缓存系统。采用配置驱动的交互模式，通过用户的复制确认行为收集反馈，建立渐进式置信度模型。核心原则：保持向后兼容、质量优先、风险可控、增量交付。",
-      "summary": "成功实现InteractiveManager类，提供完整的用户交互界面。支持多种确认方式（Y/N/是/否），完整的超时处理机制（30秒可配置），优雅的异常处理（Ctrl+C/输入错误等），智能的置信度判断决策。实现彩色终端支持、交互统计、多语言输入识别。测试验证所有核心功能正常，为主流程集成提供可靠的用户交互基础。",
-      "completedAt": "2025-08-01T04:18:27.124Z"
-    },
-    {
-      "id": "e0d603a8-5892-4687-b351-1ddf97eed42d",
-      "name": "主流程集成",
-      "description": "修改现有的 get_shell_command 和 main 函数，集成缓存检查、置信度判断、用户交互等新功能。确保新功能与原有流程无缝结合，保持向后兼容性。",
-      "notes": "这是最复杂的集成任务，需要仔细处理各种边界情况。确保任何异常都不会影响原有功能。",
-      "status": "completed",
-      "dependencies": [
-        {
-          "taskId": "8181ccbd-c3a7-42fc-89ef-5138ce0de0a2"
-        },
-        {
-          "taskId": "25bd6907-a4f1-496e-9cad-aeca0db9513c"
-        },
-        {
-          "taskId": "34994ad8-357f-4fd4-84ec-1b7b1cd765b8"
-        },
-        {
-          "taskId": "80e945cf-2716-4971-a4a0-2404a0b83bb7"
-        },
-        {
-          "taskId": "1b1d837f-d2cb-49c2-92e9-661c8e3f2b99"
-        },
-        {
-          "taskId": "9db98845-47c1-4ef7-954b-d4cf3ff9d39f"
-        }
-      ],
-      "createdAt": "2025-07-31T18:23:35.132Z",
-      "updatedAt": "2025-08-01T06:11:36.512Z",
-      "relatedFiles": [
-        {
-          "path": "ai.py",
-          "type": "TO_MODIFY",
-          "description": "修改主流程函数",
+          "description": "更新__version__变量",
           "lineStart": 8,
-          "lineEnd": 50
+          "lineEnd": 8
         }
       ],
-      "implementationGuide": "修改主流程函数：\\n\\n```python\\ndef enhanced_get_shell_command(prompt, force_api=False):\\n    # 1. 检查交互模式配置\\n    config = ConfigManager()\\n    if not config.get('interactive_mode') or force_api:\\n        return original_get_shell_command(prompt)\\n    \\n    # 2. 初始化管理器\\n    cache_manager = CacheManager(config)\\n    confidence_calc = ConfidenceCalculator(config)\\n    query_matcher = QueryMatcher()\\n    \\n    try:\\n        # 3. 查找缓存\\n        query_hash = query_matcher.get_query_hash(prompt)\\n        cached_result = cache_manager.find_exact_match(query_hash)\\n        \\n        # 4. 判断是否使用缓存\\n        if cached_result:\\n            confidence = confidence_calc.calculate_confidence(\\n                cached_result['confirmation_count'],\\n                cached_result['rejection_count']\\n            )\\n            \\n            if confidence >= config.get('auto_copy_threshold'):\\n                # 高置信度：直接复制\\n                pyperclip.copy(cached_result['command'])\\n                print(f\\\"> {cached_result['command']}  [cached]\\\\n✓ Copied to clipboard\\\")\\n                return cached_result['command']\\n            elif confidence >= config.get('confidence_threshold'):\\n                # 中等置信度：询问用户\\n                command = cached_result['command']\\n                source = f\\\"cached (confidence: {confidence:.2f})\\\"\\n            else:\\n                # 低置信度：调用API\\n                command = call_openrouter_api(prompt)\\n                source = \\\"API\\\"\\n        else:\\n            # 无缓存：调用API\\n            command = call_openrouter_api(prompt)\\n            source = \\\"API\\\"\\n        \\n        # 5. 用户确认\\n        confirmed = prompt_user_confirmation(command, source)\\n        \\n        if confirmed:\\n            pyperclip.copy(command)\\n            print(\\\"✓ Copied to clipboard\\\")\\n        \\n        # 6. 更新置信度\\n        confidence_calc.update_feedback(query_hash, command, confirmed)\\n        \\n        return command\\n        \\n    except Exception as e:\\n        # 降级到原有功能\\n        print(f\\\"Cache error, using API: {e}\\\")\\n        return original_get_shell_command(prompt)\\n```",
-      "verificationCriteria": "新功能与原有功能无缝集成，配置关闭时行为完全不变，各种异常情况都有合理处理，用户体验流畅自然。",
-      "analysisResult": "基于用户创新的\"复制确认反馈机制\"，为 aicmd v0.2.0 构建智能缓存系统。采用配置驱动的交互模式，通过用户的复制确认行为收集反馈，建立渐进式置信度模型。核心原则：保持向后兼容、质量优先、风险可控、增量交付。",
-      "summary": "成功完成主流程集成，将所有模块无缝整合到ai.py中。实现双模式支持（交互/兼容），智能缓存流程，丰富的命令行功能。测试验证API调用、缓存保存、统计功能、向后兼容性均正常。完整的异常处理确保新功能失败时优雅降级到原始行为。创建了功能完整、可靠稳定的ai-cmd v0.2.0智能命令行工具。",
-      "completedAt": "2025-08-01T06:11:36.511Z"
+      "implementationGuide": "1. 更新pyproject.toml中的version字段为\"0.2.1\"\\n2. 更新src/aicmd/__init__.py中的__version__变量为\"0.2.1\"\\n3. 检查是否有其他硬编码版本号需要更新\\n4. 验证版本更新后的构建功能",
+      "verificationCriteria": "版本号在所有相关文件中统一更新为0.2.1，uv build成功执行，aicmd --version显示正确版本号",
+      "analysisResult": "ai-cmd v0.2.1版本开发目标：实现CLI标准选项支持（-h/--help, --version）、配置文件系统重构（~/.ai-cmd/setting.json）、完整文档更新（README.md, README_zh.md, USAGE.md）。核心设计原则：向后兼容、渐进式重构、零破坏性变更。采用4阶段14任务的开发计划，确保系统稳定性和用户体验提升。",
+      "summary": "任务成功完成：版本号已从0.2.0更新为0.2.1。更新了pyproject.toml中的version字段、src/aicmd/__init__.py中的__version__变量和注释版本，以及src/aicmd/ai.py中help信息显示的版本号。构建功能正常，aicmd --help显示正确的v0.2.1版本信息，所有版本号一致性得到保证。",
+      "completedAt": "2025-08-01T09:16:09.018Z"
+    },
+    {
+      "id": "f3ba69c6-7f16-498f-885c-69e5ae5d6d32",
+      "name": "重构CLI参数解析系统",
+      "description": "将现有的手动sys.argv解析替换为标准的argparse实现，保持所有现有命令行参数的向后兼容性，同时为新增选项提供更好的基础。",
+      "notes": "重点确保向后兼容性，所有现有用法必须保持不变",
+      "status": "completed",
+      "dependencies": [
+        {
+          "taskId": "b79ac6da-8e99-4cb1-b697-3a92e8e27d10"
+        }
+      ],
+      "createdAt": "2025-08-01T09:14:30.104Z",
+      "updatedAt": "2025-08-01T09:52:37.985Z",
+      "relatedFiles": [
+        {
+          "path": "src/aicmd/ai.py",
+          "type": "TO_MODIFY",
+          "description": "重构main函数中的参数解析部分",
+          "lineStart": 240,
+          "lineEnd": 340
+        }
+      ],
+      "implementationGuide": "1. 在ai.py中导入argparse模块\\n2. 创建ArgumentParser实例，设置程序描述\\n3. 添加现有所有参数：--force-api, --disable-interactive, --stats, --reset-errors, --help\\n4. 保持原有的参数处理逻辑不变\\n5. 将手动的sys.argv循环替换为parser.parse_args()\\n6. 测试所有现有命令行功能",
+      "verificationCriteria": "所有现有命令行参数功能正常，帮助信息显示正确，参数解析更加健壮，错误处理更加友好",
+      "analysisResult": "ai-cmd v0.2.1版本开发目标：实现CLI标准选项支持（-h/--help, --version）、配置文件系统重构（~/.ai-cmd/setting.json）、完整文档更新（README.md, README_zh.md, USAGE.md）。核心设计原则：向后兼容、渐进式重构、零破坏性变更。采用4阶段14任务的开发计划，确保系统稳定性和用户体验提升。",
+      "summary": "CLI解析器成功重构为argparse，保持所有现有功能完整性。所有CLI选项(--help, --stats, --reset-errors, --disable-interactive, --force-api)测试通过，错误处理和向后兼容性均正常。代码更清晰、可维护性更强，为未来扩展奠定了基础。",
+      "completedAt": "2025-08-01T09:52:37.983Z"
+    },
+    {
+      "id": "8d256610-cb36-44c3-8016-611d2b40b285",
+      "name": "实现标准CLI选项支持",
+      "description": "基于重构后的argparse系统，添加标准的CLI选项支持：-h作为--help的短选项，-v/--version用于显示版本信息，--config用于配置管理。",
+      "notes": "版本信息应该从__init__.py动态读取，避免硬编码",
+      "status": "pending",
+      "dependencies": [
+        {
+          "taskId": "f3ba69c6-7f16-498f-885c-69e5ae5d6d32"
+        }
+      ],
+      "createdAt": "2025-08-01T09:14:30.104Z",
+      "updatedAt": "2025-08-01T09:14:30.104Z",
+      "relatedFiles": [
+        {
+          "path": "src/aicmd/ai.py",
+          "type": "TO_MODIFY",
+          "description": "添加新的CLI选项处理逻辑",
+          "lineStart": 240,
+          "lineEnd": 290
+        },
+        {
+          "path": "src/aicmd/__init__.py",
+          "type": "REFERENCE",
+          "description": "读取版本信息",
+          "lineStart": 8,
+          "lineEnd": 8
+        }
+      ],
+      "implementationGuide": "1. 在ArgumentParser中添加-h短选项（argparse默认支持）\\n2. 添加-v/--version选项，动态读取版本信息\\n3. 添加--config选项，用于后续配置管理功能\\n4. 实现version action，显示版本、作者、项目信息\\n5. 优化帮助信息的显示格式和内容\\n6. 测试所有新增选项的功能",
+      "verificationCriteria": "aicmd -h显示帮助信息，aicmd -v和aicmd --version显示正确的版本信息，所有选项功能正常",
+      "analysisResult": "ai-cmd v0.2.1版本开发目标：实现CLI标准选项支持（-h/--help, --version）、配置文件系统重构（~/.ai-cmd/setting.json）、完整文档更新（README.md, README_zh.md, USAGE.md）。核心设计原则：向后兼容、渐进式重构、零破坏性变更。采用4阶段14任务的开发计划，确保系统稳定性和用户体验提升。"
+    },
+    {
+      "id": "7f8260a0-647e-4dd6-aa24-1c42a61f26f6",
+      "name": "CLI功能完整性测试",
+      "description": "全面测试重构后的CLI系统，确保所有功能正常工作，包括新增选项和现有功能的兼容性测试。",
+      "notes": "重点关注向后兼容性，确保现有用户的使用方式不受影响",
+      "status": "pending",
+      "dependencies": [
+        {
+          "taskId": "8d256610-cb36-44c3-8016-611d2b40b285"
+        }
+      ],
+      "createdAt": "2025-08-01T09:14:30.104Z",
+      "updatedAt": "2025-08-01T09:14:30.104Z",
+      "relatedFiles": [
+        {
+          "path": "src/aicmd/ai.py",
+          "type": "REFERENCE",
+          "description": "测试主要CLI功能",
+          "lineStart": 240,
+          "lineEnd": 400
+        }
+      ],
+      "implementationGuide": "1. 测试所有现有命令行参数：--force-api, --disable-interactive, --stats, --reset-errors\\n2. 测试新增的标准选项：-h, --help, -v, --version\\n3. 测试参数组合使用的情况\\n4. 测试错误输入的处理（无效参数、缺少参数等）\\n5. 测试帮助信息的完整性和准确性\\n6. 记录所有测试结果和发现的问题",
+      "verificationCriteria": "所有CLI功能测试通过，向后兼容性100%保持，新功能工作正常，错误处理友好",
+      "analysisResult": "ai-cmd v0.2.1版本开发目标：实现CLI标准选项支持（-h/--help, --version）、配置文件系统重构（~/.ai-cmd/setting.json）、完整文档更新（README.md, README_zh.md, USAGE.md）。核心设计原则：向后兼容、渐进式重构、零破坏性变更。采用4阶段14任务的开发计划，确保系统稳定性和用户体验提升。"
+    },
+    {
+      "id": "534d6a18-b1c0-43e5-8699-4ac612ce3010",
+      "name": "设计JSON配置文件系统",
+      "description": "设计配置文件的JSON schema结构、默认配置内容、文件位置策略，为配置系统重构提供基础架构设计。",
+      "notes": "配置文件不应包含敏感信息如API密钥，这些仍通过环境变量管理",
+      "status": "pending",
+      "dependencies": [
+        {
+          "taskId": "7f8260a0-647e-4dd6-aa24-1c42a61f26f6"
+        }
+      ],
+      "createdAt": "2025-08-01T09:14:30.104Z",
+      "updatedAt": "2025-08-01T09:14:30.104Z",
+      "relatedFiles": [
+        {
+          "path": "src/aicmd/config_manager.py",
+          "type": "REFERENCE",
+          "description": "参考现有配置项设计",
+          "lineStart": 12,
+          "lineEnd": 35
+        },
+        {
+          "path": "~/.ai-cmd/setting.json",
+          "type": "CREATE",
+          "description": "将要创建的配置文件"
+        }
+      ],
+      "implementationGuide": "1. 设计JSON配置文件schema，包含所有现有配置项\\n2. 定义配置文件路径：~/.ai-cmd/setting.json\\n3. 创建默认配置模板，覆盖所有ConfigManager中的配置项\\n4. 设计配置验证规则和错误处理策略\\n5. 规划配置优先级：环境变量 > JSON文件 > 默认值\\n6. 编写配置文件操作的工具函数规划",
+      "verificationCriteria": "JSON schema设计完整，涵盖所有现有配置项，默认配置合理，文件路径策略明确",
+      "analysisResult": "ai-cmd v0.2.1版本开发目标：实现CLI标准选项支持（-h/--help, --version）、配置文件系统重构（~/.ai-cmd/setting.json）、完整文档更新（README.md, README_zh.md, USAGE.md）。核心设计原则：向后兼容、渐进式重构、零破坏性变更。采用4阶段14任务的开发计划，确保系统稳定性和用户体验提升。"
+    },
+    {
+      "id": "1e7d9a27-a51a-41b7-88ac-ee5932333631",
+      "name": "扩展ConfigManager支持JSON配置",
+      "description": "在现有ConfigManager类基础上添加JSON配置文件读取支持，实现多层配置源的优先级管理，保持向后兼容性。",
+      "notes": "必须保持现有ConfigManager接口完全兼容，不能破坏现有代码",
+      "status": "pending",
+      "dependencies": [
+        {
+          "taskId": "534d6a18-b1c0-43e5-8699-4ac612ce3010"
+        }
+      ],
+      "createdAt": "2025-08-01T09:14:30.104Z",
+      "updatedAt": "2025-08-01T09:14:30.104Z",
+      "relatedFiles": [
+        {
+          "path": "src/aicmd/config_manager.py",
+          "type": "TO_MODIFY",
+          "description": "扩展ConfigManager类",
+          "lineStart": 12,
+          "lineEnd": 150
+        }
+      ],
+      "implementationGuide": "1. 在ConfigManager.__init__()中添加JSON文件读取逻辑\\n2. 实现_load_json_config()方法读取和解析JSON配置\\n3. 修改_get_*()方法支持多层配置优先级\\n4. 添加JSON配置验证和错误处理\\n5. 实现配置文件不存在时的自动创建功能\\n6. 保持所有现有API接口不变",
+      "verificationCriteria": "ConfigManager支持JSON配置读取，优先级正确，向后兼容性保持，自动创建配置文件功能正常",
+      "analysisResult": "ai-cmd v0.2.1版本开发目标：实现CLI标准选项支持（-h/--help, --version）、配置文件系统重构（~/.ai-cmd/setting.json）、完整文档更新（README.md, README_zh.md, USAGE.md）。核心设计原则：向后兼容、渐进式重构、零破坏性变更。采用4阶段14任务的开发计划，确保系统稳定性和用户体验提升。"
+    },
+    {
+      "id": "53b9fd99-260a-4e38-863d-cfb45fdae181",
+      "name": "实现配置优先级和验证逻辑",
+      "description": "完善配置系统的优先级处理、配置项验证、错误处理和降级机制，确保配置系统的健壮性。",
+      "notes": "重点关注配置文件损坏时的降级处理，确保核心功能不受影响",
+      "status": "pending",
+      "dependencies": [
+        {
+          "taskId": "1e7d9a27-a51a-41b7-88ac-ee5932333631"
+        }
+      ],
+      "createdAt": "2025-08-01T09:14:30.104Z",
+      "updatedAt": "2025-08-01T09:14:30.104Z",
+      "relatedFiles": [
+        {
+          "path": "src/aicmd/config_manager.py",
+          "type": "TO_MODIFY",
+          "description": "增强配置验证和优先级处理",
+          "lineStart": 117,
+          "lineEnd": 150
+        }
+      ],
+      "implementationGuide": "1. 实现完整的配置优先级逻辑：环境变量 > JSON文件 > 默认值\\n2. 增强配置验证规则，支持JSON配置的类型和范围检查\\n3. 实现配置文件解析错误的优雅降级处理\\n4. 添加配置冲突检测和警告机制\\n5. 优化错误日志和用户提示信息\\n6. 实现配置自动修复功能",
+      "verificationCriteria": "配置优先级正确执行，验证逻辑完整，错误处理健壮，降级机制有效",
+      "analysisResult": "ai-cmd v0.2.1版本开发目标：实现CLI标准选项支持（-h/--help, --version）、配置文件系统重构（~/.ai-cmd/setting.json）、完整文档更新（README.md, README_zh.md, USAGE.md）。核心设计原则：向后兼容、渐进式重构、零破坏性变更。采用4阶段14任务的开发计划，确保系统稳定性和用户体验提升。"
+    },
+    {
+      "id": "9d637d89-f491-4cb1-9309-79d1d01bf082",
+      "name": "添加配置管理命令",
+      "description": "在CLI系统中添加配置管理相关的命令选项，如--config用于显示当前配置，--show-config用于显示配置详情等。",
+      "notes": "配置显示应该清楚标明每个配置项的来源（环境变量/文件/默认值）",
+      "status": "pending",
+      "dependencies": [
+        {
+          "taskId": "53b9fd99-260a-4e38-863d-cfb45fdae181"
+        }
+      ],
+      "createdAt": "2025-08-01T09:14:30.104Z",
+      "updatedAt": "2025-08-01T09:14:30.104Z",
+      "relatedFiles": [
+        {
+          "path": "src/aicmd/ai.py",
+          "type": "TO_MODIFY",
+          "description": "添加配置管理命令处理",
+          "lineStart": 240,
+          "lineEnd": 290
+        },
+        {
+          "path": "src/aicmd/config_manager.py",
+          "type": "TO_MODIFY",
+          "description": "添加配置显示方法",
+          "lineStart": 139,
+          "lineEnd": 150
+        }
+      ],
+      "implementationGuide": "1. 在argparse中添加--config和--show-config选项\\n2. 实现show_current_config()函数显示当前有效配置\\n3. 实现show_config_sources()函数显示配置来源详情\\n4. 添加--create-config选项用于重新创建默认配置文件\\n5. 在main函数中添加配置命令的处理逻辑\\n6. 优化配置信息的显示格式",
+      "verificationCriteria": "配置管理命令功能完整，显示信息准确清晰，配置文件创建功能正常",
+      "analysisResult": "ai-cmd v0.2.1版本开发目标：实现CLI标准选项支持（-h/--help, --version）、配置文件系统重构（~/.ai-cmd/setting.json）、完整文档更新（README.md, README_zh.md, USAGE.md）。核心设计原则：向后兼容、渐进式重构、零破坏性变更。采用4阶段14任务的开发计划，确保系统稳定性和用户体验提升。"
+    },
+    {
+      "id": "a53f10a0-e1fe-40c7-82a7-0264e16f0111",
+      "name": "配置系统全面测试",
+      "description": "对重构后的配置系统进行全面测试，包括多种配置源组合、边界情况、错误处理等各种场景的验证。",
+      "notes": "重点测试异常情况下的系统稳定性，确保不影响核心功能",
+      "status": "pending",
+      "dependencies": [
+        {
+          "taskId": "9d637d89-f491-4cb1-9309-79d1d01bf082"
+        }
+      ],
+      "createdAt": "2025-08-01T09:14:30.104Z",
+      "updatedAt": "2025-08-01T09:14:30.104Z",
+      "relatedFiles": [
+        {
+          "path": "src/aicmd/config_manager.py",
+          "type": "REFERENCE",
+          "description": "测试配置系统",
+          "lineStart": 1,
+          "lineEnd": 150
+        },
+        {
+          "path": "~/.ai-cmd/setting.json",
+          "type": "CREATE",
+          "description": "测试配置文件"
+        }
+      ],
+      "implementationGuide": "1. 测试纯环境变量配置（向后兼容性）\\n2. 测试纯JSON文件配置\\n3. 测试环境变量和JSON文件混合配置\\n4. 测试配置文件不存在、损坏、权限不足等异常情况\\n5. 测试所有配置项的类型验证和范围检查\\n6. 测试配置优先级的正确性\\n7. 测试配置管理命令的功能",
+      "verificationCriteria": "所有配置场景测试通过，异常处理健壮，向后兼容性100%保持，性能影响最小",
+      "analysisResult": "ai-cmd v0.2.1版本开发目标：实现CLI标准选项支持（-h/--help, --version）、配置文件系统重构（~/.ai-cmd/setting.json）、完整文档更新（README.md, README_zh.md, USAGE.md）。核心设计原则：向后兼容、渐进式重构、零破坏性变更。采用4阶段14任务的开发计划，确保系统稳定性和用户体验提升。"
+    },
+    {
+      "id": "7e508068-576b-4f4d-9e11-2b966331fb3b",
+      "name": "分析当前功能并设计文档结构",
+      "description": "全面分析ai-cmd当前的功能特性，包括新增的配置系统、CLI选项、缓存机制等，设计完整的文档结构和内容框架。",
+      "notes": "文档结构应该层次清晰，便于用户快速找到所需信息",
+      "status": "pending",
+      "dependencies": [
+        {
+          "taskId": "a53f10a0-e1fe-40c7-82a7-0264e16f0111"
+        }
+      ],
+      "createdAt": "2025-08-01T09:14:30.104Z",
+      "updatedAt": "2025-08-01T09:14:30.104Z",
+      "relatedFiles": [
+        {
+          "path": "README.md",
+          "type": "REFERENCE",
+          "description": "现有README文件",
+          "lineStart": 1,
+          "lineEnd": 43
+        },
+        {
+          "path": "src/aicmd/",
+          "type": "REFERENCE",
+          "description": "分析源代码功能"
+        }
+      ],
+      "implementationGuide": "1. 梳理ai-cmd的所有功能特性：基本命令生成、智能缓存、交互模式、配置管理等\\n2. 分析目标用户群体和使用场景\\n3. 设计README.md的内容结构：安装、配置、使用、高级功能\\n4. 规划README_zh.md的中文版本适配\\n5. 设计USAGE.md的详细使用指南结构\\n6. 确定文档的写作风格和格式标准",
+      "verificationCriteria": "功能分析完整准确，文档结构设计合理，内容框架清晰，符合用户需求",
+      "analysisResult": "ai-cmd v0.2.1版本开发目标：实现CLI标准选项支持（-h/--help, --version）、配置文件系统重构（~/.ai-cmd/setting.json）、完整文档更新（README.md, README_zh.md, USAGE.md）。核心设计原则：向后兼容、渐进式重构、零破坏性变更。采用4阶段14任务的开发计划，确保系统稳定性和用户体验提升。"
+    },
+    {
+      "id": "cb2a364f-ef58-4a27-a80c-12cfc179e2b3",
+      "name": "更新README.md英文版",
+      "description": "基于功能分析和文档结构设计，全面更新README.md文件，展示ai-cmd v0.2.1的完整功能和使用方法。",
+      "notes": "保持英文表达的准确性和专业性，确保国际用户能够理解",
+      "status": "pending",
+      "dependencies": [
+        {
+          "taskId": "7e508068-576b-4f4d-9e11-2b966331fb3b"
+        }
+      ],
+      "createdAt": "2025-08-01T09:14:30.104Z",
+      "updatedAt": "2025-08-01T09:14:30.104Z",
+      "relatedFiles": [
+        {
+          "path": "README.md",
+          "type": "TO_MODIFY",
+          "description": "更新完整的英文README",
+          "lineStart": 1,
+          "lineEnd": 43
+        }
+      ],
+      "implementationGuide": "1. 更新项目描述，突出智能缓存和配置管理等新特性\\n2. 完善安装说明，包括uv和pip两种方式\\n3. 详细说明配置方法：环境变量和JSON配置文件\\n4. 添加完整的CLI选项说明和使用示例\\n5. 增加功能特性章节：缓存、交互模式、置信度系统\\n6. 添加故障排除和常见问题解答\\n7. 更新贡献指南和许可证信息",
+      "verificationCriteria": "README.md内容完整准确，结构清晰，示例代码可运行，链接有效",
+      "analysisResult": "ai-cmd v0.2.1版本开发目标：实现CLI标准选项支持（-h/--help, --version）、配置文件系统重构（~/.ai-cmd/setting.json）、完整文档更新（README.md, README_zh.md, USAGE.md）。核心设计原则：向后兼容、渐进式重构、零破坏性变更。采用4阶段14任务的开发计划，确保系统稳定性和用户体验提升。"
+    },
+    {
+      "id": "a1a94407-4211-4eba-a4ea-462e979e4085",
+      "name": "创建README_zh.md中文版",
+      "description": "基于更新后的README.md，创建完整的中文版本README_zh.md，适配中文用户的阅读习惯和表达方式。",
+      "notes": "中文版不是简单翻译，需要考虑中文用户的使用习惯",
+      "status": "pending",
+      "dependencies": [
+        {
+          "taskId": "cb2a364f-ef58-4a27-a80c-12cfc179e2b3"
+        }
+      ],
+      "createdAt": "2025-08-01T09:14:30.104Z",
+      "updatedAt": "2025-08-01T09:14:30.104Z",
+      "relatedFiles": [
+        {
+          "path": "README_zh.md",
+          "type": "CREATE",
+          "description": "创建中文版README"
+        },
+        {
+          "path": "README.md",
+          "type": "REFERENCE",
+          "description": "参考英文版内容"
+        }
+      ],
+      "implementationGuide": "1. 翻译README.md的所有内容为中文\\n2. 适配中文的表达习惯和技术术语\\n3. 调整示例代码中的提示文本为中文\\n4. 添加中文特有的使用场景和示例\\n5. 优化中文版的排版和格式\\n6. 确保所有链接和引用的准确性\\n7. 添加中文社区的联系方式",
+      "verificationCriteria": "README_zh.md内容完整准确，中文表达自然，格式美观，适合中文用户阅读",
+      "analysisResult": "ai-cmd v0.2.1版本开发目标：实现CLI标准选项支持（-h/--help, --version）、配置文件系统重构（~/.ai-cmd/setting.json）、完整文档更新（README.md, README_zh.md, USAGE.md）。核心设计原则：向后兼容、渐进式重构、零破坏性变更。采用4阶段14任务的开发计划，确保系统稳定性和用户体验提升。"
+    },
+    {
+      "id": "529c975e-6b5a-430c-8b73-a73fba9e8368",
+      "name": "创建USAGE.md详细使用指南",
+      "description": "创建专门的USAGE.md文件，提供ai-cmd的详细使用指南，包括高级功能、最佳实践、配置优化等深入内容。",
+      "notes": "USAGE.md应该比README更加详细和技术化，面向高级用户",
+      "status": "pending",
+      "dependencies": [
+        {
+          "taskId": "a1a94407-4211-4eba-a4ea-462e979e4085"
+        }
+      ],
+      "createdAt": "2025-08-01T09:14:30.104Z",
+      "updatedAt": "2025-08-01T09:14:30.104Z",
+      "relatedFiles": [
+        {
+          "path": "USAGE.md",
+          "type": "CREATE",
+          "description": "创建详细使用指南"
+        },
+        {
+          "path": "src/aicmd/",
+          "type": "REFERENCE",
+          "description": "参考代码实现细节"
+        }
+      ],
+      "implementationGuide": "1. 创建完整的使用场景目录：日常命令生成、系统管理、开发辅助等\\n2. 详细说明所有CLI选项和参数的使用方法\\n3. 提供配置文件的完整示例和最佳实践\\n4. 介绍缓存系统的工作原理和优化方法\\n5. 说明交互模式和置信度系统的使用技巧\\n6. 添加故障排除指南和性能优化建议\\n7. 提供与其他工具集成的示例\\n8. 包含API文档和扩展开发指南",
+      "verificationCriteria": "USAGE.md内容深入全面，示例丰富实用，技术细节准确，结构清晰易查阅",
+      "analysisResult": "ai-cmd v0.2.1版本开发目标：实现CLI标准选项支持（-h/--help, --version）、配置文件系统重构（~/.ai-cmd/setting.json）、完整文档更新（README.md, README_zh.md, USAGE.md）。核心设计原则：向后兼容、渐进式重构、零破坏性变更。采用4阶段14任务的开发计划，确保系统稳定性和用户体验提升。"
+    },
+    {
+      "id": "98dcfe2b-5129-43d8-9255-db1b3eb48be3",
+      "name": "集成测试和构建验证",
+      "description": "进行ai-cmd v0.2.1的最终集成测试，验证所有功能的协同工作，确保构建系统正常，为版本发布做最后准备。",
+      "notes": "这是发布前的最后质量关卡，必须确保所有测试通过",
+      "status": "pending",
+      "dependencies": [
+        {
+          "taskId": "529c975e-6b5a-430c-8b73-a73fba9e8368"
+        }
+      ],
+      "createdAt": "2025-08-01T09:14:30.104Z",
+      "updatedAt": "2025-08-01T09:14:30.104Z",
+      "relatedFiles": [
+        {
+          "path": "pyproject.toml",
+          "type": "REFERENCE",
+          "description": "验证构建配置"
+        },
+        {
+          "path": "src/aicmd/",
+          "type": "REFERENCE",
+          "description": "测试所有源代码"
+        },
+        {
+          "path": "README.md",
+          "type": "REFERENCE",
+          "description": "验证文档示例"
+        },
+        {
+          "path": "README_zh.md",
+          "type": "REFERENCE",
+          "description": "验证中文文档"
+        },
+        {
+          "path": "USAGE.md",
+          "type": "REFERENCE",
+          "description": "验证使用指南"
+        }
+      ],
+      "implementationGuide": "1. 执行完整的功能回归测试，覆盖所有CLI选项和配置场景\\n2. 测试不同操作系统和Python版本的兼容性\\n3. 验证uv build构建过程和生成的包\\n4. 测试包安装和卸载流程\\n5. 验证所有文档链接和示例代码的正确性\\n6. 进行性能基准测试，确保无性能退化\\n7. 检查代码质量：运行black格式化和flake8检查\\n8. 生成最终的测试报告和发布清单",
+      "verificationCriteria": "所有集成测试通过，构建成功，包功能完整，文档准确，代码质量符合标准，性能稳定",
+      "analysisResult": "ai-cmd v0.2.1版本开发目标：实现CLI标准选项支持（-h/--help, --version）、配置文件系统重构（~/.ai-cmd/setting.json）、完整文档更新（README.md, README_zh.md, USAGE.md）。核心设计原则：向后兼容、渐进式重构、零破坏性变更。采用4阶段14任务的开发计划，确保系统稳定性和用户体验提升。"
     }
   ]
 }
