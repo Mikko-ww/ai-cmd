@@ -64,14 +64,14 @@
       "name": "实现标准CLI选项支持",
       "description": "基于重构后的argparse系统，添加标准的CLI选项支持：-h作为--help的短选项，-v/--version用于显示版本信息，--config用于配置管理。",
       "notes": "版本信息应该从__init__.py动态读取，避免硬编码",
-      "status": "pending",
+      "status": "completed",
       "dependencies": [
         {
           "taskId": "f3ba69c6-7f16-498f-885c-69e5ae5d6d32"
         }
       ],
       "createdAt": "2025-08-01T09:14:30.104Z",
-      "updatedAt": "2025-08-01T09:14:30.104Z",
+      "updatedAt": "2025-08-01T10:16:11.783Z",
       "relatedFiles": [
         {
           "path": "src/aicmd/ai.py",
@@ -90,7 +90,9 @@
       ],
       "implementationGuide": "1. 在ArgumentParser中添加-h短选项（argparse默认支持）\\n2. 添加-v/--version选项，动态读取版本信息\\n3. 添加--config选项，用于后续配置管理功能\\n4. 实现version action，显示版本、作者、项目信息\\n5. 优化帮助信息的显示格式和内容\\n6. 测试所有新增选项的功能",
       "verificationCriteria": "aicmd -h显示帮助信息，aicmd -v和aicmd --version显示正确的版本信息，所有选项功能正常",
-      "analysisResult": "ai-cmd v0.2.1版本开发目标：实现CLI标准选项支持（-h/--help, --version）、配置文件系统重构（~/.ai-cmd/setting.json）、完整文档更新（README.md, README_zh.md, USAGE.md）。核心设计原则：向后兼容、渐进式重构、零破坏性变更。采用4阶段14任务的开发计划，确保系统稳定性和用户体验提升。"
+      "analysisResult": "ai-cmd v0.2.1版本开发目标：实现CLI标准选项支持（-h/--help, --version）、配置文件系统重构（~/.ai-cmd/setting.json）、完整文档更新（README.md, README_zh.md, USAGE.md）。核心设计原则：向后兼容、渐进式重构、零破坏性变更。采用4阶段14任务的开发计划，确保系统稳定性和用户体验提升。",
+      "summary": "成功实现了标准CLI选项支持：-h/--help显示完整帮助信息包含使用示例，-v/--version动态显示版本、作者和项目信息，--config显示详细的系统配置状态。所有选项功能正常，保持向后兼容性，帮助信息格式优化良好。",
+      "completedAt": "2025-08-01T10:16:11.782Z"
     },
     {
       "id": "7f8260a0-647e-4dd6-aa24-1c42a61f26f6",

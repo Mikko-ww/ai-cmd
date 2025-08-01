@@ -3,6 +3,7 @@ import requests
 import argparse
 import pyperclip
 from dotenv import load_dotenv
+from . import __version__, __author__, __email__
 from .error_handler import GracefulDegradationManager
 from .config_manager import ConfigManager
 from .cache_manager import CacheManager
@@ -14,6 +15,14 @@ load_dotenv()
 
 # 全局错误处理管理器
 degradation_manager = GracefulDegradationManager()
+
+
+def get_version_info():
+    """获取版本信息字符串"""
+    return f"""AI Command Line Tool v{__version__}
+Author: {__author__} ({__email__})
+Repository: https://github.com/Mikko-ww/ai-cmd
+License: MIT"""
 
 
 def get_shell_command_original(prompt):
@@ -243,8 +252,25 @@ def main():
         # 创建ArgumentParser实例
         parser = argparse.ArgumentParser(
             description="AI Command Line Tool v0.2.1 - Convert natural language to shell commands",
-            add_help=False  # 我们自定义help处理
+            prog="aicmd",
+            formatter_class=argparse.RawDescriptionHelpFormatter,
+            epilog="""
+Examples:
+  aicmd "list all files"
+  aicmd "create new directory" --force-api
+  aicmd --stats
+  aicmd --config
+            """
         )
+        
+        # 添加版本信息选项
+        parser.add_argument('-v', '--version', action='version', 
+                          version=get_version_info(),
+                          help='Show version information')
+        
+        # 添加配置管理选项
+        parser.add_argument('--config', action='store_true',
+                          help='Show current configuration')
         
         # 添加现有的所有参数
         parser.add_argument('prompt', nargs='*', help='Natural language prompt for command generation')
@@ -256,33 +282,21 @@ def main():
                           help='Show cache and interaction statistics')
         parser.add_argument('--reset-errors', action='store_true',
                           help='Reset error state')
-        parser.add_argument('--help', action='store_true',
-                          help='Show this help message')
         
-        # 解析命令行参数
+        # 解析命令行参数  
         args = parser.parse_args()
         
-        # 处理特殊命令
-        if args.help:
-            print("AI Command Line Tool v0.2.1")
-            print("\nUsage: aicmd <your natural language prompt> [options]")
-            print("\nOptions:")
-            print("  --force-api          Force API call, bypass cache")
-            print("  --disable-interactive Disable interactive mode for this request")
-            print("  --reset-errors       Reset error state")
-            print("  --stats             Show cache and interaction statistics")
-            print("  --help              Show this help message")
-            print("\nExamples:")
-            print("  aicmd \"list all files\"")
-            print("  aicmd \"create new directory\" --force-api")
-            print("  aicmd --stats")
+        # 处理配置显示
+        if args.config:
+            show_configuration()
             return
             
+        # 处理特殊命令
         if args.reset_errors:
             degradation_manager.force_reset()
             print("✓ Error state has been reset.")
             return
-        
+            
         if args.stats:
             print_system_stats()
             return
@@ -327,6 +341,52 @@ def main():
             status = degradation_manager.get_status()
             print(f"System health status: Error count {status['error_count']}/{status['max_error_count']}")
             print("Consider running with --reset-errors to reset error state.")
+
+
+def show_configuration():
+    """显示当前配置信息"""
+    try:
+        config = ConfigManager()
+        
+        print("=== AI Command Tool Configuration ===")
+        print(f"Version: {__version__}")
+        print(f"Author: {__author__}")
+        
+        # 基本配置
+        print("\nBasic Configuration:")
+        print(f"  Interactive Mode: {config.get('interactive_mode', False)}")
+        print(f"  Cache Enabled: {config.get('cache_enabled', True)}")
+        print(f"  Auto Copy Threshold: {config.get('auto_copy_threshold', 0.9)}")
+        print(f"  Manual Confirmation Threshold: {config.get('manual_confirmation_threshold', 0.8)}")
+        
+        # API配置
+        api_key = os.getenv("AI_CMD_OPENROUTER_API_KEY")
+        model_name = os.getenv("AI_CMD_OPENROUTER_MODEL", "Not set")
+        print("\nAPI Configuration:")
+        print(f"  API Key: {'✓ Set' if api_key else '✗ Not found'}")
+        print(f"  Model: {model_name}")
+        
+        # 缓存配置
+        print("\nCache Configuration:")
+        print(f"  Cache Directory: {config.get('cache_directory', '~/.ai-cmd')}")
+        print(f"  Database File: {config.get('database_file', 'ai_cmd_cache.db')}")
+        print(f"  Max Cache Age (days): {config.get('max_cache_age_days', 30)}")
+        
+        # 交互配置
+        print("\nInteraction Configuration:")
+        print(f"  Interaction Timeout (seconds): {config.get('interaction_timeout_seconds', 10)}")
+        print(f"  Max Retries: {config.get('max_retries', 3)}")
+        
+        # 系统状态
+        error_stats = degradation_manager.get_status()
+        print("\nSystem Status:")
+        print(f"  Health Status: {'✓ Healthy' if degradation_manager.is_healthy() else '⚠ Degraded'}")
+        print(f"  Error Count: {error_stats['error_count']}/{error_stats['max_error_count']}")
+        print(f"  Cache Available: {'✓' if error_stats['cache_available'] else '✗'}")
+        print(f"  Database Available: {'✓' if error_stats['database_available'] else '✗'}")
+        
+    except Exception as e:
+        print(f"Error displaying configuration: {e}")
 
 
 def print_system_stats():
