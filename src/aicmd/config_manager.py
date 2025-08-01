@@ -12,14 +12,23 @@ class ConfigManager:
     def __init__(self):
         """初始化配置管理器，从环境变量读取配置"""
         self.config = {
+            # 是否启用交互模式
             'interactive_mode': self._get_bool('AI_CMD_INTERACTIVE_MODE', False),
+            # 置信度阈值（低于此值需用户确认）
             'confidence_threshold': self._get_float('AI_CMD_CONFIDENCE_THRESHOLD', 0.8),
-            'auto_copy_threshold': self._get_float('AI_CMD_AUTO_COPY_THRESHOLD', 0.9),
+            # 自动复制到剪贴板的置信度阈值
+            'auto_copy_threshold': self._get_float('AI_CMD_AUTO_COPY_THRESHOLD', 1.0),
+            # 正反馈权重
             'positive_weight': self._get_float('AI_CMD_POSITIVE_WEIGHT', 0.2),
-            'negative_weight': self._get_float('AI_CMD_NEGATIVE_WEIGHT', 0.5),
+            # 负反馈权重
+            'negative_weight': self._get_float('AI_CMD_NEGATIVE_WEIGHT', 0.6),
+            # 查询相似度阈值
             'similarity_threshold': self._get_float('AI_CMD_SIMILARITY_THRESHOLD', 0.7),
+            # 是否启用缓存
             'cache_enabled': self._get_bool('AI_CMD_CACHE_ENABLED', True),
+            # 缓存大小限制
             'cache_size_limit': self._get_int('AI_CMD_CACHE_SIZE_LIMIT', 1000),
+            # 缓存目录
             'cache_dir': self._get_string('AI_CMD_CACHE_DIR', None)
         }
     

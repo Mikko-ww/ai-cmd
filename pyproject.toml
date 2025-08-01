@@ -5,7 +5,7 @@ description = "A smart command-line tool that converts natural language prompts 
 readme = "README.md"
 requires-python = ">=3.9"
 authors = [
-    {name = "AI-CMD Team", email = "support@ai-cmd.dev"}
+    {name = "Mikko", email = "allen125423412@163.com"}
 ]
 license = "MIT"
 keywords = ["ai", "command-line", "shell", "automation", "productivity"]
