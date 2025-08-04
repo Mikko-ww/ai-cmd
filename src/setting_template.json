@@ -1,0 +1,33 @@
+{
+  "version": "0.2.1",
+  "description": "AI Command Line Tool Configuration",
+  "basic": {
+    "interactive_mode": false,
+    "cache_enabled": true,
+    "auto_copy_threshold": 0.9,
+    "manual_confirmation_threshold": 0.8
+  },
+  "api": {
+    "model": "google/gemma-3-27b-it:free",
+    "timeout_seconds": 30,
+    "max_retries": 3
+  },
+  "cache": {
+    "cache_directory": "~/.ai-cmd",
+    "database_file": "ai_cmd_cache.db",
+    "max_cache_age_days": 30,
+    "cache_size_limit": 1000
+  },
+  "interaction": {
+    "interaction_timeout_seconds": 10,
+    "positive_weight": 0.2,
+    "negative_weight": 0.6,
+    "similarity_threshold": 0.7,
+    "confidence_threshold": 0.8
+  },
+  "display": {
+    "show_confidence": false,
+    "show_source": false,
+    "colored_output": true
+  }
+}
