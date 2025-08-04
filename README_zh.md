@@ -190,8 +190,8 @@ ai-cmd/
 │   ├── config_manager.py  # 配置管理
 │   ├── cache_manager.py   # 缓存系统
 │   ├── interactive_manager.py  # 用户交互
+│   ├── setting_template.json   # 配置模板
 │   └── ...
-├── config_template.json   # 配置模板
 ├── pyproject.toml         # 项目配置
 └── README.md             # 此文件
 ```

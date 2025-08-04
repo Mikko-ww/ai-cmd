@@ -190,8 +190,8 @@ ai-cmd/
 │   ├── config_manager.py    # Configuration management
 │   ├── cache_manager.py     # Caching system
 │   ├── interactive_manager.py  # User interaction
+|   ├── setting_template.json     # Configuration template
 │   └── ...
-├── config_template.json     # Configuration template
 ├── pyproject.toml          # Project configuration
 └── README.md              # This file
 ```
