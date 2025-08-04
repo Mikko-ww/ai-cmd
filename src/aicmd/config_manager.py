@@ -4,6 +4,7 @@
 支持环境变量和JSON配置文件的多层配置源
 """
 
+import importlib
 import os
 import json
 from pathlib import Path
@@ -211,21 +212,16 @@ class ConfigManager:
         return "Default"
 
     def create_user_config(self, config_data=None):
-        """创建用户配置文件"""
         config_dir = Path.home() / ".ai-cmd"
         config_dir.mkdir(exist_ok=True)
-
         config_file = config_dir / "settings.json"
 
         if config_data is None:
-            # 使用默认模板
-            template_path = (
-                Path(__file__).parent.parent / "setting_template.json"
-            )
-            if template_path.exists():
-                with open(template_path, "r", encoding="utf-8") as f:
+            try:
+                # 读取包内资源
+                with importlib.resources.files("aicmd").joinpath("setting_template.json").open("r", encoding="utf-8") as f:
                     config_data = json.load(f)
-            else:
+            except Exception:
                 config_data = self._get_default_json_config()
 
         try:

@@ -48,6 +48,9 @@ where = ["src"]
 [tool.setuptools.package-dir]
 "" = "src"
 
+[tool.setuptools.package-data]
+"aicmd" = ["setting_template.json"]
+
 [dependency-groups]
 dev = [
     "black>=25.1.0",
