@@ -125,10 +125,7 @@ aicmd "检查磁盘使用情况" --disable-interactive
 |------|------|--------|
 | `AI_CMD_OPENROUTER_API_KEY` | OpenRouter API 密钥 | 必需 |
 | `AI_CMD_OPENROUTER_MODEL` | 使用的 AI 模型 | `google/gemma-3-27b-it:free` |
-| `AI_CMD_INTERACTIVE_MODE` | 启用交互模式 | `false` |
-| `AI_CMD_CACHE_ENABLED` | 启用缓存 | `true` |
-| `AI_CMD_AUTO_COPY_THRESHOLD` | 自动复制置信度阈值 | `0.9` |
-| `AI_CMD_CONFIDENCE_THRESHOLD` | 手动确认阈值 | `0.8` |
+| `AI_CMD_OPENROUTER_MODEL_BACKUP` | 备用 AI 模型 | 可选 |
 
 ## 🔧 高级功能
 

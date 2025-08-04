@@ -8,6 +8,7 @@
     "manual_confirmation_threshold": 0.8
   },
   "api": {
+    "use_backup_model": false,
     "timeout_seconds": 30,
     "max_retries": 3
   },

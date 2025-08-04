@@ -112,6 +112,7 @@ class ConfigManager:
             api = json_config["api"]
             flattened.update(
                 {
+                    "use_backup_model": api.get("use_backup_model", False),
                     "api_timeout_seconds": api.get("timeout_seconds"),
                     "max_retries": api.get("max_retries"),
                 }
@@ -249,7 +250,7 @@ class ConfigManager:
                 "auto_copy_threshold": 0.9,
                 "manual_confirmation_threshold": 0.8,
             },
-            "api": {"timeout_seconds": 30, "max_retries": 3},
+            "api": {"timeout_seconds": 30, "max_retries": 3, "use_backup_model": False},
             "cache": {
                 "cache_directory": "~/.ai-cmd",
                 "database_file": "ai_cmd_cache.db",

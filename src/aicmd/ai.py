@@ -30,11 +30,15 @@ def get_shell_command_original(prompt):
     """原始的获取shell命令函数，用于向后兼容和降级"""
 
     def main_api_operation():
+        config = ConfigManager()
+        is_use_backup_model = config.get("use_backup_model", False)
         api_key = os.getenv("AI_CMD_OPENROUTER_API_KEY")
         if not api_key:
             logger.error("Error: AI_CMD_OPENROUTER_API_KEY not found in .env file.")
             return None
-        model_name = os.getenv("AI_CMD_OPENROUTER_MODEL")
+        model = os.getenv("AI_CMD_OPENROUTER_MODEL")
+        model_backup = os.getenv("AI_CMD_OPENROUTER_MODEL_BACKUP")
+        model_name = model_backup if is_use_backup_model else model
 
         response = requests.post(
             url="https://openrouter.ai/api/v1/chat/completions",
@@ -501,9 +505,12 @@ def show_configuration():
         # API配置
         api_key = os.getenv("AI_CMD_OPENROUTER_API_KEY")
         model_name = os.getenv("AI_CMD_OPENROUTER_MODEL", "Not set")
+        model_name_backup = os.getenv("AI_CMD_OPENROUTER_MODEL_BACKUP", "Not set")
         print("\nAPI Configuration:")
         print(f"  API Key: {'✓ Set' if api_key else '✗ Not found'}")
         print(f"  Model: {model_name}")
+        print(f"  Backup Model: {model_name_backup}")
+        print(f"  use_backup_model: {config.get('use_backup_model', False)}")
 
         # 缓存配置
         print("\nCache Configuration:")

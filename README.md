@@ -125,10 +125,8 @@ aicmd "check disk usage" --disable-interactive
 |----------|-------------|---------|
 | `AI_CMD_OPENROUTER_API_KEY` | OpenRouter API key | Required |
 | `AI_CMD_OPENROUTER_MODEL` | AI model to use | `google/gemma-3-27b-it:free` |
-| `AI_CMD_INTERACTIVE_MODE` | Enable interactive mode | `false` |
-| `AI_CMD_CACHE_ENABLED` | Enable caching | `true` |
-| `AI_CMD_AUTO_COPY_THRESHOLD` | Auto-copy confidence threshold | `0.9` |
-| `AI_CMD_CONFIDENCE_THRESHOLD` | Manual confirmation threshold | `0.8` |
+| `AI_CMD_OPENROUTER_MODEL_BACKUP` | Backup AI model | Optional |
+
 
 ## 🔧 Advanced Features
 
