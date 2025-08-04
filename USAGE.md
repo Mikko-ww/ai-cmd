@@ -103,7 +103,6 @@ aicmd --create-config
     "manual_confirmation_threshold": 0.8
   },
   "api": {
-    "model": "google/gemma-3-27b-it:free",
     "timeout_seconds": 30,
     "max_retries": 3
   },
