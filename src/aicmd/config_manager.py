@@ -209,10 +209,14 @@ class ConfigManager:
 
         return "Default"
 
-    def create_user_config(self, config_data=None):
+    def create_user_config(self, config_data=None, is_force=False):
         config_dir = Path.home() / ".ai-cmd"
         config_dir.mkdir(exist_ok=True)
         config_file = config_dir / "settings.json"
+        if not is_force and config_file.exists():
+            print(f"Config file already exists: {config_file}")
+            print("Use --create-config-force to overwrite the existing file.")
+            return config_file
 
         if config_data is None:
             try:
@@ -225,6 +229,10 @@ class ConfigManager:
         try:
             with open(config_file, "w", encoding="utf-8") as f:
                 json.dump(config_data, f, indent=2, ensure_ascii=False)
+
+            print(f"✓ User configuration file created: {config_file}")
+            print("You can now edit this file to customize your settings.")
+            print("Run 'aicmd --show-config' to see the current configuration.")
             return config_file
         except Exception as e:
             print(f"Error creating config file: {e}")

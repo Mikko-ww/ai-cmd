@@ -7,7 +7,7 @@ import math
 from typing import Dict, Any, Optional, Tuple
 from datetime import datetime, timedelta
 from .config_manager import ConfigManager
-from .cache_manager import CacheManager
+from .cache_manager import CacheManager, CacheEntry
 from .database_manager import SafeDatabaseManager
 from .error_handler import GracefulDegradationManager, safe_cache_operation
 
@@ -59,24 +59,32 @@ class ConfidenceCalculator:
         positive_score = confirmation_count * self.positive_weight
         negative_score = rejection_count * self.negative_weight
 
-        # 总反馈次数
-        total_feedback = confirmation_count + rejection_count
-
-        if total_feedback == 0:
-            # 没有反馈时使用初始置信度
+        total_score = positive_score + negative_score
+        if total_score == 0:
+            # 如果没有反馈，使用初始置信度
             base_confidence = self.initial_confidence
         else:
-            # 使用改进的置信度计算公式
-            net_score = positive_score - negative_score
+            # 计算基础置信度
+            base_confidence = positive_score / total_score
 
-            # 使用 Sigmoid 函数进行归一化，但保持简单
-            # 避免过于复杂的数学函数
-            if net_score >= 0:
-                base_confidence = 0.5 + (net_score / (net_score + total_feedback * 0.5))
-            else:
-                base_confidence = 0.5 * (
-                    1 + net_score / (abs(net_score) + total_feedback * 0.5)
-                )
+        # # 总反馈次数
+        # total_feedback = confirmation_count + rejection_count
+
+        # if total_feedback == 0:
+        #     # 没有反馈时使用初始置信度
+        #     base_confidence = self.initial_confidence
+        # else:
+        #     # 使用改进的置信度计算公式
+        #     net_score = positive_score - negative_score
+
+        #     # 使用 Sigmoid 函数进行归一化，但保持简单
+        #     # 避免过于复杂的数学函数
+        #     if net_score >= 0:
+        #         base_confidence = 0.5 + (net_score / (net_score + total_feedback * 0.5))
+        #     else:
+        #         base_confidence = 0.5 * (
+        #             1 + net_score / (abs(net_score) + total_feedback * 0.5)
+        #         )
 
         # 应用时间衰减
         if self.time_decay_enabled and created_at:
@@ -157,11 +165,11 @@ class ConfidenceCalculator:
         """
 
         def feedback_operation():
-            if not self.cache_manager or not self.cache_manager.db.is_available:
-                return False, 0.0
+            # if not self.cache_manager or not self.cache_manager.db.is_available:
+            #     return False, 0.0
 
             # 查找现有缓存条目
-            cache_entry = self.cache_manager.find_exact_match_by_hash(query_hash)
+            cache_entry = self.find_exact_match_by_hash(query_hash)
 
             if not cache_entry:
                 # 没有找到缓存条目，可能需要创建新的
@@ -277,7 +285,7 @@ class ConfidenceCalculator:
         )
 
         if result and isinstance(result, list) and len(result) > 0:
-            from cache_manager import CacheEntry
+            # from self.cache_manager import CacheEntry
 
             return CacheEntry.from_db_row(result[0])
 

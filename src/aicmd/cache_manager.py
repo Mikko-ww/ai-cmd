@@ -6,6 +6,7 @@
 import platform
 import os
 from datetime import datetime, timedelta
+import re
 from typing import Optional, List, Dict, Any, Tuple
 from .database_manager import SafeDatabaseManager
 from .config_manager import ConfigManager
@@ -94,6 +95,34 @@ class CacheManager:
         # 错误处理和优雅降级
         self.degradation_manager = degradation_manager or GracefulDegradationManager()
 
+    # 比较两个命令字符串是否相等
+    def compare_commands(self, command1: str, command2: str) -> bool:
+        """
+        比较两个命令字符串是否相等
+
+        Args:
+            command1: 第一个命令字符串
+            command2: 第二个命令字符串
+
+        Returns:
+            是否相等
+        """
+        # copy 
+        command1_cleaned = command1.strip()
+        command2_cleaned = command2.strip()
+        # 去除掉command中的<>括号以及其中的内容 以及前后空格 例如" git commit -m <message>  "-> "git commit -m" 需要保持原有的命令不变
+        command1_cleaned = re.sub(r'<.*?>', '', command1_cleaned).strip()
+        command2_cleaned = re.sub(r'<.*?>', '', command1_cleaned).strip()
+
+
+        # # 打印两个命令是否相等 如果相等 command == command  否则 command1 != command2
+        # if command1_cleaned == command2_cleaned:
+        #     print(f"Commands are equal:\n{command1_cleaned}")
+        # else:
+        #     print(f"Commands are not equal:\n1: {command1_cleaned}\n2: {command2_cleaned}")
+
+        return command1_cleaned == command2_cleaned
+
     def save_cache_entry(
         self,
         query: str,
@@ -114,7 +143,8 @@ class CacheManager:
             # 检查是否已存在相同的缓存条目
             existing_entry = self.find_exact_match(query)
             if existing_entry and existing_entry.query_hash:
-                if existing_entry.command == command:
+                if self.compare_commands(existing_entry.command, command):
+                # if existing_entry.command == command:
                     self.update_last_used(existing_entry.query_hash)
                     return existing_entry.query_hash
                 else:

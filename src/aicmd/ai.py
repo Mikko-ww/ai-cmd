@@ -10,6 +10,7 @@ from .cache_manager import CacheManager
 from .confidence_calculator import ConfidenceCalculator
 from .query_matcher import QueryMatcher
 from .interactive_manager import InteractiveManager, ConfirmationResult
+from .logger import logger
 
 load_dotenv()
 
@@ -31,7 +32,7 @@ def get_shell_command_original(prompt):
     def main_api_operation():
         api_key = os.getenv("AI_CMD_OPENROUTER_API_KEY")
         if not api_key:
-            print("Error: AI_CMD_OPENROUTER_API_KEY not found in .env file.")
+            logger.error("Error: AI_CMD_OPENROUTER_API_KEY not found in .env file.")
             return None
         model_name = os.getenv("AI_CMD_OPENROUTER_MODEL")
 
@@ -77,7 +78,7 @@ def get_shell_command(prompt, force_api=False):
         # 交互模式未启用或强制使用API，使用原始功能
         command = get_shell_command_original(prompt)
         if command:
-            print(command)
+            logger.info(command)
             try:
                 pyperclip.copy(command)
                 # 在非交互模式下显示复制确认
@@ -98,7 +99,7 @@ def get_shell_command(prompt, force_api=False):
         interactive_manager = InteractiveManager(config, degradation_manager)
 
         # 生成查询哈希
-        query_hash = query_matcher.get_query_hash(prompt)
+        # query_hash = query_matcher.get_query_hash(prompt)
 
         # 查找精确匹配的缓存
         cached_entry = cache_manager.find_exact_match(prompt)
@@ -107,6 +108,8 @@ def get_shell_command(prompt, force_api=False):
         source = "API"
         confidence = 0.0
         similarity = 0.0
+
+        api_command = None
 
         if cached_entry:
             # 找到缓存条目，计算置信度
@@ -122,7 +125,7 @@ def get_shell_command(prompt, force_api=False):
                 # 高置信度：直接使用缓存并自动复制
                 command = cached_entry.command
                 source = f"Cache (High Confidence)"
-
+                logger.info(command)
                 try:
                     pyperclip.copy(command)
                     interactive_manager.display_success_message(command, copied=True)
@@ -150,20 +153,18 @@ def get_shell_command(prompt, force_api=False):
 
             else:
                 # 低置信度：调用API获取新命令
-                command = get_shell_command_original(prompt)
-                if not command or command.startswith("Error:"):
+                api_command = get_shell_command_original(prompt)
+                if not api_command or api_command.startswith("Error:"):
                     # API调用失败，使用缓存作为备选
                     command = cached_entry.command
                     source = f"Cache (API Failed)"
                 else:
+                    command = api_command
                     source = "API"
 
         else:
             # 没有找到精确匹配，查找相似的缓存
-            # 获取所有缓存条目进行相似性匹配
-            all_cached_queries = (
-                cache_manager.get_all_cached_queries()
-            )  # 需要实现这个方法
+            all_cached_queries = cache_manager.get_all_cached_queries()
 
             if all_cached_queries:
                 similar_queries = query_matcher.find_similar_queries(
@@ -197,18 +198,26 @@ def get_shell_command(prompt, force_api=False):
                             source = f"Similar Cache"
                         else:
                             # 相似度或置信度不够，调用API
-                            command = get_shell_command_original(prompt)
+                            if api_command is None:
+                                api_command = get_shell_command_original(prompt)
+                            command = api_command
                             source = "API"
                     else:
-                        command = get_shell_command_original(prompt)
+                        if api_command is None:
+                            api_command = get_shell_command_original(prompt)
+                        command = api_command
                         source = "API"
                 else:
                     # 没有找到相似查询，调用API
-                    command = get_shell_command_original(prompt)
+                    if api_command is None:
+                        api_command = get_shell_command_original(prompt)
+                    command = api_command
                     source = "API"
             else:
                 # 没有任何缓存，调用API
-                command = get_shell_command_original(prompt)
+                if api_command is None:
+                    api_command = get_shell_command_original(prompt)
+                command = api_command
                 source = "API"
 
         # 验证命令有效性
@@ -315,6 +324,13 @@ Examples:
             action="store_true",
             help="Create user configuration file",
         )
+
+        parser.add_argument(
+            "--create-config-force",
+            action="store_true",
+            help="Force create user configuration file",
+        )
+
         parser.add_argument(
             "--validate-config",
             action="store_true",
@@ -353,7 +369,11 @@ Examples:
             return
 
         if args.create_config:
-            create_user_configuration()
+            create_user_configuration(is_force=False)
+            return
+
+        if args.create_config_force:
+            create_user_configuration(is_force=True)
             return
 
         if args.validate_config:
@@ -367,7 +387,7 @@ Examples:
             return
 
         if args.status:
-            print_system_stats()
+            print_system_status()
             return
 
         # 检查是否有实际的查询
@@ -412,18 +432,21 @@ def show_detailed_configuration():
         print(f"Error displaying detailed configuration: {e}")
 
 
-def create_user_configuration():
+def create_user_configuration(is_force=False):
     """创建用户配置文件"""
     try:
         config = ConfigManager()
-        config_file = config.create_user_config()
+        config_file = config.create_user_config(is_force=is_force)
 
-        if config_file:
-            print(f"✓ User configuration file created: {config_file}")
-            print("You can now edit this file to customize your settings.")
-            print("Run 'aicmd --show-config' to see the current configuration.")
-        else:
+        if not config_file:
             print("✗ Failed to create user configuration file.")
+        
+        # if config_file:
+        #     print(f"✓ User configuration file created: {config_file}")
+        #     print("You can now edit this file to customize your settings.")
+        #     print("Run 'aicmd --show-config' to see the current configuration.")
+        # else:
+        #     print("✗ Failed to create user configuration file.")
     except Exception as e:
         print(f"Error creating user configuration: {e}")
 
@@ -513,7 +536,7 @@ def show_configuration():
         print(f"Error displaying configuration: {e}")
 
 
-def print_system_stats():
+def print_system_status():
     """显示系统统计信息"""
     try:
         config = ConfigManager()
