@@ -6,15 +6,15 @@
 
 ## 任务概述
 
-将ai-cmd项目版本从v0.2.0升级到v0.2.1，为新版本功能开发奠定基础。此任务是v0.2.1版本开发计划的第一步，确保所有版本标识的一致性。
+将ai-cmd项目版本从v0.2.0升级到v0.2.2，为新版本功能开发奠定基础。此任务是v0.2.2版本开发计划的第一步，确保所有版本标识的一致性。
 
 ## 执行步骤
 
 ### 1. 版本信息更新
 
 **更新的文件和位置**：
-- `pyproject.toml` (第3行): version字段从"0.2.0"更新为"0.2.1"
-- `src/aicmd/__init__.py` (第8行): __version__变量从"0.2.0"更新为"0.2.1"
+- `pyproject.toml` (第3行): version字段从"0.2.0"更新为"0.2.2"
+- `src/aicmd/__init__.py` (第8行): __version__变量从"0.2.0"更新为"0.2.2"
 - `src/aicmd/__init__.py` (第2行): 文档字符串版本信息更新
 - `src/aicmd/ai.py` (第271行): CLI帮助信息显示版本更新
 
@@ -23,20 +23,20 @@
 进行全面的版本号检查，确保没有遗漏的硬编码版本引用：
 - 搜索项目中所有"v0.2.0"和"0.2.0"的引用
 - 发现并更新ai.py中help信息显示的版本号
-- 确认所有版本引用统一为0.2.1
+- 确认所有版本引用统一为0.2.2
 
 ### 3. 构建功能验证
 
 执行`uv build`命令验证版本更新后的构建功能：
-- ✅ 构建成功生成ai_cmd-0.2.1.tar.gz
-- ✅ 构建成功生成ai_cmd-0.2.1-py3-none-any.whl  
-- ✅ CLI命令`aicmd --help`正确显示"AI Command Line Tool v0.2.1"
+- ✅ 构建成功生成ai_cmd-0.2.2.tar.gz
+- ✅ 构建成功生成ai_cmd-0.2.2-py3-none-any.whl  
+- ✅ CLI命令`aicmd --help`正确显示"AI Command Line Tool v0.2.2"
 
 ## 技术细节
 
 ### 版本管理策略
 采用语义化版本控制(Semantic Versioning)：
-- 主版本号.次版本号.修订号 (0.2.1)
+- 主版本号.次版本号.修订号 (0.2.2)
 - 此次为功能性更新，增加次版本号的修订号
 
 ### 文件修改影响
@@ -55,26 +55,26 @@
 uv build
 
 # 构建结果
-Successfully built dist/ai_cmd-0.2.1.tar.gz
-Successfully built dist/ai_cmd-0.2.1-py3-none-any.whl
+Successfully built dist/ai_cmd-0.2.2.tar.gz
+Successfully built dist/ai_cmd-0.2.2-py3-none-any.whl
 ```
 
 ### 版本显示验证
 ```bash
 # CLI版本显示
 uv run aicmd --help
-> AI Command Line Tool v0.2.1
+> AI Command Line Tool v0.2.2
 ```
 
 ### 版本一致性检查
-- ✅ pyproject.toml: 0.2.1
-- ✅ __init__.py: 0.2.1  
-- ✅ ai.py help信息: v0.2.1
-- ✅ 构建包名: ai_cmd-0.2.1
+- ✅ pyproject.toml: 0.2.2
+- ✅ __init__.py: 0.2.2  
+- ✅ ai.py help信息: v0.2.2
+- ✅ 构建包名: ai_cmd-0.2.2
 
 ## 后续影响
 
-本次版本升级为v0.2.1功能开发奠定了基础：
+本次版本升级为v0.2.2功能开发奠定了基础：
 1. **CLI增强**: 为argparse重构和标准选项支持做准备
 2. **配置系统**: 为JSON配置文件系统提供版本标识
 3. **文档更新**: 为README和USAGE文档更新提供正确的版本信息
@@ -89,10 +89,10 @@ uv run aicmd --help
 
 ## 总结
 
-版本升级任务圆满完成，所有版本标识已成功统一为0.2.1。构建系统正常工作，CLI显示正确版本信息。此任务为v0.2.1版本的14个开发任务奠定了坚实基础，可以继续执行后续的CLI重构任务。
+版本升级任务圆满完成，所有版本标识已成功统一为0.2.2。构建系统正常工作，CLI显示正确版本信息。此任务为v0.2.2版本的14个开发任务奠定了坚实基础，可以继续执行后续的CLI重构任务。
 
 **核心成果**:
-- 📝 版本号统一更新为0.2.1
+- 📝 版本号统一更新为0.2.2
 - 🔨 构建系统正常工作  
 - ✅ 版本显示一致性保证
 - 🎯 为后续任务做好准备

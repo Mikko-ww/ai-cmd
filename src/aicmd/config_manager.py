@@ -241,7 +241,7 @@ class ConfigManager:
     def _get_default_json_config(self):
         """获取默认JSON配置结构"""
         return {
-            "version": "0.2.1",
+            "version": "0.2.2",
             "description": "AI Command Line Tool Configuration",
             "basic": {
                 "interactive_mode": False,

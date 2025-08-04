@@ -94,7 +94,7 @@ aicmd --create-config
 
 ```json
 {
-  "version": "0.2.1",
+  "version": "0.2.2",
   "description": "AI Command Line Tool Configuration",
   "basic": {
     "interactive_mode": false,
