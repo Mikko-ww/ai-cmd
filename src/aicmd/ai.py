@@ -75,7 +75,18 @@ def get_shell_command(prompt, force_api=False):
     # 检查是否启用交互模式
     if not config.get("interactive_mode", False) or force_api:
         # 交互模式未启用或强制使用API，使用原始功能
-        return get_shell_command_original(prompt)
+        command = get_shell_command_original(prompt)
+        if command:
+            print(command)
+            try:
+                pyperclip.copy(command)
+                # 在非交互模式下显示复制确认
+                print("✓ Copied to clipboard!")
+            except Exception as e:
+                degradation_manager.logger.warning(
+                    f"Failed to copy to clipboard: {e}"
+                )
+        return command
 
     # 初始化所有管理器
     try:
@@ -269,14 +280,14 @@ def main():
     try:
         # 创建ArgumentParser实例
         parser = argparse.ArgumentParser(
-            description="AI Command Line Tool v0.2.1 - Convert natural language to shell commands",
+            description="AI Command Line Tool v0.2.2 - Convert natural language to shell commands",
             prog="aicmd",
             formatter_class=argparse.RawDescriptionHelpFormatter,
             epilog="""
 Examples:
   aicmd "list all files"
   aicmd "create new directory" --force-api
-  aicmd --stats
+  aicmd --status
   aicmd --config
             """,
         )
@@ -323,7 +334,7 @@ Examples:
             help="Disable interactive mode for this request",
         )
         parser.add_argument(
-            "--stats", action="store_true", help="Show cache and interaction statistics"
+            "--status", action="store_true", help="Show cache and interaction statistics"
         )
         parser.add_argument(
             "--reset-errors", action="store_true", help="Reset error state"
@@ -355,7 +366,7 @@ Examples:
             print("✓ Error state has been reset.")
             return
 
-        if args.stats:
+        if args.status:
             print_system_stats()
             return
 
@@ -373,20 +384,7 @@ Examples:
 
         # 获取命令
         command = get_shell_command(prompt, force_api=force_api)
-
-        if command:
-            # 如果是非交互模式或强制API模式，显示命令并复制
-            if force_api or args.disable_interactive:
-                print(command)
-                try:
-                    pyperclip.copy(command)
-                    # 在非交互模式下显示复制确认
-                    print("✓ Copied to clipboard!")
-                except Exception as e:
-                    degradation_manager.logger.warning(
-                        f"Failed to copy to clipboard: {e}"
-                    )
-        else:
+        if not command:
             print("Error: No command generated.")
 
     except KeyboardInterrupt:

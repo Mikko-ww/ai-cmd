@@ -225,19 +225,19 @@ class CacheManager:
             if not self.db.is_available:
                 return {"status": "unavailable"}
 
-            stats = {}
+            status = {}
 
             # 总缓存条目数
             result = self.db.execute_query(
                 "SELECT COUNT(*) FROM enhanced_cache", fetch=True
             )
             if result and isinstance(result, list) and len(result) > 0:
-                stats["total_entries"] = result[0][0]
+                status["total_entries"] = result[0][0]
             else:
-                stats["total_entries"] = 0
+                status["total_entries"] = 0
 
-            stats["status"] = "available"
-            return stats
+            status["status"] = "available"
+            return status
 
         def fallback_operation():
             return {"status": "error", "total_entries": 0}

@@ -53,10 +53,10 @@
           "lineEnd": 340
         }
       ],
-      "implementationGuide": "1. 在ai.py中导入argparse模块\\n2. 创建ArgumentParser实例，设置程序描述\\n3. 添加现有所有参数：--force-api, --disable-interactive, --stats, --reset-errors, --help\\n4. 保持原有的参数处理逻辑不变\\n5. 将手动的sys.argv循环替换为parser.parse_args()\\n6. 测试所有现有命令行功能",
+      "implementationGuide": "1. 在ai.py中导入argparse模块\\n2. 创建ArgumentParser实例，设置程序描述\\n3. 添加现有所有参数：--force-api, --disable-interactive, --status, --reset-errors, --help\\n4. 保持原有的参数处理逻辑不变\\n5. 将手动的sys.argv循环替换为parser.parse_args()\\n6. 测试所有现有命令行功能",
       "verificationCriteria": "所有现有命令行参数功能正常，帮助信息显示正确，参数解析更加健壮，错误处理更加友好",
       "analysisResult": "ai-cmd v0.2.1版本开发目标：实现CLI标准选项支持（-h/--help, --version）、配置文件系统重构（~/.ai-cmd/setting.json）、完整文档更新（README.md, README_zh.md, USAGE.md）。核心设计原则：向后兼容、渐进式重构、零破坏性变更。采用4阶段14任务的开发计划，确保系统稳定性和用户体验提升。",
-      "summary": "CLI解析器成功重构为argparse，保持所有现有功能完整性。所有CLI选项(--help, --stats, --reset-errors, --disable-interactive, --force-api)测试通过，错误处理和向后兼容性均正常。代码更清晰、可维护性更强，为未来扩展奠定了基础。",
+      "summary": "CLI解析器成功重构为argparse，保持所有现有功能完整性。所有CLI选项(--help, --status, --reset-errors, --disable-interactive, --force-api)测试通过，错误处理和向后兼容性均正常。代码更清晰、可维护性更强，为未来扩展奠定了基础。",
       "completedAt": "2025-08-01T09:52:37.983Z"
     },
     {

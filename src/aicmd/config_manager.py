@@ -56,9 +56,9 @@ class ConfigManager:
         if json_config:
             config.update(self._flatten_json_config(json_config))
 
-        # 2. 加载环境变量配置（最高优先级）
-        env_config = self._load_env_config()
-        config.update(env_config)
+        # # 2. 加载环境变量配置（最高优先级）
+        # env_config = self._load_env_config()
+        # config.update(env_config)
 
         return config
 
@@ -155,8 +155,6 @@ class ConfigManager:
         # 过滤None值
         return {k: v for k, v in flattened.items() if v is not None}
 
-    def _load_env_config(self):
-        """从环境变量加载配置（保持向后兼容性）"""
 
     def _load_env_config(self):
         """从环境变量加载配置（保持向后兼容性）"""

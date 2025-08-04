@@ -282,13 +282,13 @@ class SafeDatabaseManager:
             return {"status": "unavailable"}
 
         try:
-            stats = {}
+            status = {}
 
             # 缓存条目统计
             result = self.execute_query(
                 "SELECT COUNT(*) FROM enhanced_cache", fetch=True
             )
-            stats["cache_entries"] = (
+            status["cache_entries"] = (
                 result[0][0]
                 if result and isinstance(result, list) and len(result) > 0
                 else 0
@@ -298,7 +298,7 @@ class SafeDatabaseManager:
             result = self.execute_query(
                 "SELECT COUNT(*) FROM feedback_history", fetch=True
             )
-            stats["feedback_entries"] = (
+            status["feedback_entries"] = (
                 result[0][0]
                 if result and isinstance(result, list) and len(result) > 0
                 else 0
@@ -306,17 +306,17 @@ class SafeDatabaseManager:
 
             # 数据库文件大小
             if self.db_path and os.path.exists(self.db_path):
-                stats["db_size_mb"] = round(
+                status["db_size_mb"] = round(
                     os.path.getsize(self.db_path) / (1024 * 1024), 2
                 )
 
-            stats["status"] = "available"
-            stats["db_path"] = self.db_path
+            status["status"] = "available"
+            status["db_path"] = self.db_path
 
-            return stats
+            return status
 
         except Exception as e:
-            print(f"Warning: Failed to get database stats: {e}")
+            print(f"Warning: Failed to get database status: {e}")
             return {"status": "error", "error": str(e)}
 
     def backup_database(self, backup_path=None):

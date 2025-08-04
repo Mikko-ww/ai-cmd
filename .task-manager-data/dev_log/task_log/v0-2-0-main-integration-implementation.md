@@ -63,7 +63,7 @@ python ai.py "check disk space" --disable-interactive
 ### 管理命令
 ```bash
 # 显示系统统计
-python ai.py --stats
+python ai.py --status
 
 # 重置错误状态
 python ai.py --reset-errors

@@ -24,7 +24,7 @@
      - `prompt`: 位置参数，支持多个单词
      - `--force-api`: 强制API调用
      - `--disable-interactive`: 禁用交互模式
-     - `--stats`: 显示统计信息
+     - `--status`: 显示统计信息
      - `--reset-errors`: 重置错误状态
      - `--help`: 自定义帮助信息
    - 使用args.parse_args()自动解析参数
@@ -39,7 +39,7 @@
 
 ### 功能测试结果
 1. ✅ `aicmd --help` - 显示正确的帮助信息
-2. ✅ `aicmd --stats` - 显示系统统计信息
+2. ✅ `aicmd --status` - 显示系统统计信息
 3. ✅ `aicmd --reset-errors` - 重置错误状态
 4. ✅ `aicmd "list files" --disable-interactive` - 基本命令生成
 5. ✅ `aicmd` - 无参数错误处理

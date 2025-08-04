@@ -68,7 +68,7 @@ aicmd "check disk usage" --disable-interactive
 | `--validate-config` | Validate current configuration |
 | `--force-api` | Force API call, bypass cache |
 | `--disable-interactive` | Disable interactive mode |
-| `--stats` | Show cache and interaction statistics |
+| `--status` | Show cache and interaction statistics |
 | `--reset-errors` | Reset error state |
 
 ### Configuration System
@@ -151,7 +151,7 @@ When enabled, interactive mode provides:
 
 ```bash
 # View detailed statistics
-aicmd --stats
+aicmd --status
 
 # View configuration status
 aicmd --show-config

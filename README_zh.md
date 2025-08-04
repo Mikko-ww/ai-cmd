@@ -68,7 +68,7 @@ aicmd "检查磁盘使用情况" --disable-interactive
 | `--validate-config` | 验证当前配置 |
 | `--force-api` | 强制 API 调用，绕过缓存 |
 | `--disable-interactive` | 禁用交互模式 |
-| `--stats` | 显示缓存和交互统计 |
+| `--status` | 显示缓存和交互统计 |
 | `--reset-errors` | 重置错误状态 |
 
 ### 配置系统
@@ -151,7 +151,7 @@ aicmd "检查磁盘使用情况" --disable-interactive
 
 ```bash
 # 查看详细统计
-aicmd --stats
+aicmd --status
 
 # 查看配置状态
 aicmd --show-config

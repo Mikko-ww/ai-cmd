@@ -1,5 +1,5 @@
 """
-AI Command Line Tool v0.2.1
+AI Command Line Tool v0.2.2
 
 A smart command-line tool that converts natural language prompts to shell commands
 using OpenRouter API with intelligent caching and user interaction features.

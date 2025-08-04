@@ -332,16 +332,16 @@ Interactive Mode Help:
         if total == 0:
             return {"message": "No interactions yet"}
 
-        stats = self.interaction_stats.copy()
+        status = self.interaction_stats.copy()
 
         # 计算百分比
         for key in ["confirmed", "rejected", "timeouts", "cancelled", "errors"]:
-            count = stats[key]
-            stats[f"{key}_percentage"] = (
+            count = status[key]
+            status[f"{key}_percentage"] = (
                 round((count / total) * 100, 1) if total > 0 else 0
             )
 
-        return stats
+        return status
 
     def reset_stats(self):
         """重置交互统计"""

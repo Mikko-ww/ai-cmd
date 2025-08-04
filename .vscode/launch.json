@@ -1,0 +1,54 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Debug ai-cmd (module)",
+      "type": "debugpy",
+      "request": "launch",
+      "module": "aicmd.ai",
+      "console": "integratedTerminal",
+      "justMyCode": false,
+      "envFile": "${workspaceFolder}/.env",
+      "args": [
+        "${input:cliArgs}"
+      ]
+    },
+
+    
+
+    // {
+    //   "name": "Debug ai-cmd (module)",
+    //   "type": "debugpy",
+    //   "request": "launch",
+    //   "module": "aicmd.ai",
+    //   "console": "integratedTerminal",
+    //   "justMyCode": false,
+    //   "envFile": "${workspaceFolder}/.env",
+    //   "args": [
+    //     "list all files in current directory",
+    //     "--disable-interactive"
+    //   ]
+    // },
+
+    // {
+    //   "name": "Debug ai-cmd (script)",
+    //   "type": "debugpy",
+    //   "request": "launch",
+    //   "program": "${workspaceFolder}/src/aicmd/ai.py",
+    //   "console": "integratedTerminal",
+    //   "justMyCode": true,
+    //   "cwd": "${workspaceFolder}",
+    //   "args": [
+    //     "check disk usage"
+    //   ]
+    // }
+  ],
+  "inputs": [
+    {
+      "id": "cliArgs",
+      "type": "promptString",
+      "description": "请输入内容",
+      "default": ""
+    }
+  ]
+}

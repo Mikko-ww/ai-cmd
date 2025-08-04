@@ -230,7 +230,7 @@ The caching system uses a SQLite database to store:
 
 ```bash
 # View cache statistics
-aicmd --stats
+aicmd --status
 
 # Reset error states (affects cache behavior)
 aicmd --reset-errors
@@ -348,7 +348,7 @@ aicmd --show-config
 aicmd --reset-errors
 
 # Check system status
-aicmd --stats
+aicmd --status
 ```
 
 ### Debug Mode
@@ -364,7 +364,7 @@ aicmd "your query"
 
 ```bash
 # System health overview
-aicmd --stats
+aicmd --status
 
 # Configuration validation
 aicmd --validate-config
