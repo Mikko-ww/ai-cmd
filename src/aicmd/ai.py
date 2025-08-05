@@ -341,6 +341,14 @@ Examples:
             help="Validate current configuration",
         )
 
+        # # 添加设置配置选项
+        # parser.add_argument(
+        #     "--set-config",
+        #     nargs=2,
+        #     metavar=("KEY", "VALUE"),
+        #     help="Set a configuration key to a specific value (e.g., --set-config interactive_mode true)",
+        # )
+
         # 添加现有的所有参数
         parser.add_argument(
             "prompt", nargs="*", help="Natural language prompt for command generation"
@@ -383,6 +391,22 @@ Examples:
         if args.validate_config:
             validate_configuration()
             return
+        
+        if args.test_set_config:
+            key = "api.use_backup_model"
+            value = "false"
+            logger.error(f"Setting config: {key} = {value}")
+            config = ConfigManager()
+            config.set_config(key, value)
+            return
+
+        
+        if args.set_config:
+            key, value = args.set_config
+            logger.error(f"Setting config: {key} = {value}")
+            config = ConfigManager()
+            config.set_config(key, value)
+            return
 
         # 处理特殊命令
         if args.reset_errors:
@@ -394,6 +418,7 @@ Examples:
             print_system_status()
             return
 
+        return
         # 检查是否有实际的查询
         if not args.prompt:
             print("Error: No query provided. Use --help for usage information.")

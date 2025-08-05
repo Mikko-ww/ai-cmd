@@ -8,6 +8,7 @@ import importlib
 import os
 import json
 from pathlib import Path
+from venv import logger
 
 
 class ConfigManager:
@@ -518,3 +519,41 @@ class ConfigManager:
 
         if not validation_result["warnings"] and not validation_result["errors"]:
             print(f"\n✓ Configuration is valid with no issues.")
+
+
+    # 设置配置属性 只有当配置有效时（也就是配置文件存在的时候）
+    def set_config(self, key, value):
+        # 1. 加载JSON配置文件
+        json_config = self._load_json_config()
+        if not json_config:
+            logger.error("Failed to load JSON config.")
+        if not self.config:
+            logger.error(f"Warning: Configuration is not loaded.")
+            return
+        # 如果key是嵌套属性，分割成多个层级
+        if "." in key:
+            keys = key.split(".")
+            current = json_config
+            for k in keys[:-1]:
+                print(f"Setting key: {k}")
+                if k not in current:
+                    print(f"Warning: Invalid configuration key: {key}")
+                    return
+                current = current[k]
+            key = keys[-1]
+        else:
+            current = json_config
+
+        current[key] = value
+
+        # 保存到JSON配置文件
+        config_path = self._get_config_file_path()
+        if config_path:
+            try:
+                with open(config_path, "w", encoding="utf-8") as f:
+                    json.dump(json_config, f, indent=2, ensure_ascii=False)
+                print(f"✓ Configuration updated: {key} = {value}")
+            except Exception as e:
+                print(f"Error saving configuration: {e}")
+
+        self.config.update(self._flatten_json_config(json_config))
