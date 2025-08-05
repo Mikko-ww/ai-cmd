@@ -418,7 +418,6 @@ Examples:
             print_system_status()
             return
 
-        return
         # 检查是否有实际的查询
         if not args.prompt:
             print("Error: No query provided. Use --help for usage information.")
