@@ -393,21 +393,12 @@ Examples:
             validate_configuration()
             return
         
-        if args.test_set_config:
-            key = "api.use_backup_model"
-            value = "false"
-            logger.error(f"Setting config: {key} = {value}")
-            config = ConfigManager()
-            config.set_config(key, value)
-            return
-
-        
-        if args.set_config:
-            key, value = args.set_config
-            logger.error(f"Setting config: {key} = {value}")
-            config = ConfigManager()
-            config.set_config(key, value)
-            return
+        # if args.set_config:
+        #     key, value = args.set_config
+        #     logger.error(f"Setting config: {key} = {value}")
+        #     config = ConfigManager()
+        #     config.set_config(key, value)
+        #     return
 
         # 处理特殊命令
         if args.reset_errors:
