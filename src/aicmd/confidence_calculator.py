@@ -55,17 +55,26 @@ class ConfidenceCalculator:
         Returns:
             置信度分数 (0.0 - 1.0)
         """
-        # 基础得分计算
-        positive_score = confirmation_count * self.positive_weight
-        negative_score = rejection_count * self.negative_weight
+        # # 基础得分计算
+        # positive_score = confirmation_count * self.positive_weight
+        # negative_score = rejection_count * self.negative_weight
 
-        total_score = positive_score + negative_score
-        if total_score == 0:
-            # 如果没有反馈，使用初始置信度
-            base_confidence = self.initial_confidence
-        else:
-            # 计算基础置信度
-            base_confidence = positive_score / total_score
+        # total_score = positive_score + negative_score
+        # if total_score == 0:
+        #     # 如果没有反馈，使用初始置信度
+        #     base_confidence = self.initial_confidence
+        # else:
+        #     # 计算基础置信度
+        #     base_confidence = positive_score / total_score
+
+        base_confidence = self._calculate_desire(
+            confirmation_count,
+            rejection_count,
+            alpha=self.positive_weight,
+            beta=self.negative_weight,
+            s0=self.initial_confidence,
+            k=0.8,  # 可以根据需要调整敏感度
+        )
 
         # # 总反馈次数
         # total_feedback = confirmation_count + rejection_count
@@ -93,6 +102,50 @@ class ConfidenceCalculator:
 
         # 确保结果在有效范围内
         return max(0.0, min(1.0, base_confidence))
+
+
+    def _calculate_desire(self,n_a: int, n_r: int, alpha: float, beta: float, s0: float, k: float) -> float:
+        """
+        根据增强和拒绝次数计算智能提示的欲望值。
+
+        该函数基于一个Sigmoid模型，将一个内部的“潜在得分”映射到(0, 1)区间。
+
+        Args:
+            n_a (int): 增强次数 (用户接受或主动请求)。
+            n_r (int): 拒绝次数。
+            alpha (float): 单次增强因子，代表每次增强对内在得分的提升量。
+            beta (float): 单次降低因子，代表每次拒绝带来的惩罚。
+                        根据要求，beta 应该大于 alpha。
+            s0 (float): 初始得分，代表系统在无交互前的基础倾向。
+                        s0=0 表示中立。
+            k (float): 敏感度因子，控制函数曲线的陡峭程度。
+                    k值越大，欲望值变化越剧烈。
+
+        Returns:
+            float: 计算出的欲望值，范围在 (0, 1) 之间。
+        """
+        if not beta > alpha > 0:
+            # 添加一个检查，确保核心约束得到满足
+            raise ValueError("参数必须满足约束: beta > alpha > 0")
+
+        # 1. 计算内部潜在得分 (S)
+        latent_score = s0 + n_a * alpha - n_r * beta
+
+        # 2. 将潜在得分通过Sigmoid函数映射到 (0, 1)
+        #    公式: D = 1 / (1 + e^(-k * S))
+        try:
+            desire_value = 1 / (1 + math.exp(-k * latent_score))
+        except OverflowError:
+            # 如果 latent_score 过大或过小，math.exp 可能会溢出
+            # 如果 -k * S 是一个非常大的负数，e^(-kS) -> 0, D -> 1
+            # 如果 -k * S 是一个非常大的正数，e^(-kS) -> ∞, D -> 0
+            desire_value = 0.0 if latent_score < 0 else 1.0
+
+
+        return desire_value
+
+    
+
 
     def _calculate_time_decay_factor(
         self, created_at: str, last_used: Optional[str] = None
