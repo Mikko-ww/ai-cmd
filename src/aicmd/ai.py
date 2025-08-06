@@ -50,7 +50,8 @@ def get_shell_command_original(prompt):
                 "messages": [
                     {
                         "role": "system",
-                        "content": "You are a helpful assistant that provides shell commands based on a user's natural language prompt. Only provide the shell command, with no additional explanation or formatting.",
+                        # "content": "You are a helpful assistant that provides shell commands based on a user's natural language prompt. Only provide the shell command, with no additional explanation or formatting.",
+                        "content": "You are a helpful assistant that provides shell commands based on a user's natural language prompt. Only provide the shell command, with no additional explanation or formatting. For any parameters that require user input, enclose them in angle brackets, like so: <parameter_name>.",
                     },
                     {"role": "user", "content": prompt},
                 ],
