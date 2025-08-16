@@ -591,7 +591,7 @@ def show_configuration():
         # 缓存配置
         print("\nCache Configuration:")
         print(f"  Cache Directory: {config.get('cache_directory', '~/.ai-cmd')}")
-        print(f"  Database File: {config.get('database_file', 'ai_cmd_cache.db')}")
+        print(f"  Database File: {config.get('database_file', 'cache.db')}")
         print(f"  Max Cache Age (days): {config.get('max_cache_age_days', 30)}")
 
         # 交互配置

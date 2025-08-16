@@ -2,9 +2,9 @@
   "version": "0.3.0",
   "description": "AI Command Line Tool Configuration",
   "basic": {
-    "interactive_mode": false,
+    "interactive_mode": true,
     "cache_enabled": true,
-    "auto_copy_threshold": 0.8,
+    "auto_copy_threshold": 1.0,
     "manual_confirmation_threshold": 0.7
   },
   "api": {
@@ -14,7 +14,7 @@
   },
   "cache": {
     "cache_directory": "~/.ai-cmd",
-    "database_file": "ai_cmd_cache.db",
+    "database_file": "cache.db",
     "max_cache_age_days": 30,
     "cache_size_limit": 1000
   },

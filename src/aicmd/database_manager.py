@@ -5,7 +5,6 @@
 
 import sqlite3
 import os
-import hashlib
 import threading
 from pathlib import Path
 from datetime import datetime
@@ -33,24 +32,12 @@ class SafeDatabaseManager:
             cache_directory = self.config.get("cache_directory") or self.config.get(
                 "cache_dir"
             )
-            database_file = self.config.get("database_file") or "ai_cmd_cache.db"
+            database_file = self.config.get("database_file") or "cache.db"
 
             base_dir = Path(cache_directory or (Path.home() / ".ai-cmd")).expanduser()
             base_dir.mkdir(parents=True, exist_ok=True)
 
-            # 兼容旧版本默认名 ~/.ai-cmd/cache.db
             new_db_path = base_dir / database_file
-            legacy_db_path = base_dir / "cache.db"
-
-            if not new_db_path.exists() and legacy_db_path.exists():
-                # 迁移旧文件到新命名（保留旧文件作为备份）
-                try:
-                    import shutil
-
-                    shutil.copy2(legacy_db_path, new_db_path)
-                except Exception:
-                    pass
-
             return str(new_db_path)
 
         except Exception as e:

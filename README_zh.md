@@ -100,7 +100,7 @@ aicmd "检查磁盘使用情况" --disable-interactive
   },
   "cache": {
     "cache_directory": "~/.ai-cmd",
-    "database_file": "ai_cmd_cache.db",
+    "database_file": "cache.db",
     "max_cache_age_days": 30,
     "cache_size_limit": 1000
   },

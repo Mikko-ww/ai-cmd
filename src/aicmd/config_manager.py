@@ -29,7 +29,7 @@ class ConfigManager:
             "max_retries": 3,
             # 缓存配置
             "cache_directory": "~/.ai-cmd",
-            "database_file": "ai_cmd_cache.db",
+            "database_file": "cache.db",
             "max_cache_age_days": 30,
             "cache_size_limit": 1000,
             # 交互配置
@@ -255,7 +255,7 @@ class ConfigManager:
             "api": {"timeout_seconds": 30, "max_retries": 3, "use_backup_model": False},
             "cache": {
                 "cache_directory": "~/.ai-cmd",
-                "database_file": "ai_cmd_cache.db",
+                "database_file": "cache.db",
                 "max_cache_age_days": 30,
                 "cache_size_limit": 1000,
             },
