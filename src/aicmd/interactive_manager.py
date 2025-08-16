@@ -34,11 +34,31 @@ class InteractiveManager:
         self.config = config_manager or ConfigManager()
         self.degradation_manager = degradation_manager or GracefulDegradationManager()
 
-        # 从配置获取交互参数
-        self.default_timeout = self.config.get("interaction_timeout", 30)
-        self.auto_confirm_on_timeout = self.config.get("auto_confirm_on_timeout", True)
+        # 从配置获取交互参数（与模板对齐，同时兼容旧键名）
+        # 读取并强制类型的配置项
+        timeout_primary = self.config.get("interaction_timeout_seconds", None)
+        timeout_fallback = self.config.get("interaction_timeout", 30)
+        default_timeout: int = 30
+        for candidate in (timeout_primary, timeout_fallback):
+            try:
+                if isinstance(candidate, (int, float, str)):
+                    default_timeout = int(candidate)
+                    break
+            except Exception:
+                continue
+        self.default_timeout = default_timeout
+        auto_confirm_raw = self.config.get("auto_confirm_on_timeout", True)
+        self.auto_confirm_on_timeout = (
+            bool(auto_confirm_raw)
+            if isinstance(auto_confirm_raw, (bool, int, str))
+            else True
+        )
+        # 展示项
         self.show_detailed_info = self.config.get("show_detailed_info", True)
-        self.use_colors = self.config.get("use_colors", True) and self._supports_color()
+        colored_output = self.config.get("colored_output", None)
+        if colored_output is None:
+            colored_output = self.config.get("use_colors", True)
+        self.use_colors = bool(colored_output) and self._supports_color()
 
         # 交互统计
         self.interaction_stats = {
@@ -328,20 +348,19 @@ Interactive Mode Help:
 
     def get_interaction_stats(self) -> Dict[str, Any]:
         """获取交互统计信息"""
-        total = self.interaction_stats["total_prompts"]
+        total = int(self.interaction_stats.get("total_prompts", 0))
         if total == 0:
             return {"message": "No interactions yet"}
 
-        status = self.interaction_stats.copy()
+        status_dict: Dict[str, Any] = dict(self.interaction_stats)
 
         # 计算百分比
         for key in ["confirmed", "rejected", "timeouts", "cancelled", "errors"]:
-            count = status[key]
-            status[f"{key}_percentage"] = (
-                round((count / total) * 100, 1) if total > 0 else 0
-            )
+            count = int(status_dict.get(key, 0))
+            percentage = round((count / total) * 100.0, 1)
+            status_dict[f"{key}_percentage"] = float(percentage)
 
-        return status
+        return status_dict
 
     def reset_stats(self):
         """重置交互统计"""
@@ -350,12 +369,18 @@ Interactive Mode Help:
 
     def is_interactive_mode_enabled(self) -> bool:
         """检查是否启用交互模式"""
-        return self.config.get("interactive_mode", False)
+        return bool(self.config.get("interactive_mode", False) or False)
 
     def should_prompt_for_confirmation(self, confidence: float) -> bool:
         """根据置信度判断是否需要用户确认"""
-        confidence_threshold = self.config.get("confidence_threshold", 0.8)
-        auto_copy_threshold = self.config.get("auto_copy_threshold", 0.9)
+        try:
+            confidence_threshold = float(self.config.get("confidence_threshold", 0.8) or 0.8)
+        except Exception:
+            confidence_threshold = 0.8
+        try:
+            auto_copy_threshold = float(self.config.get("auto_copy_threshold", 0.9) or 0.9)
+        except Exception:
+            auto_copy_threshold = 0.9
 
         # 置信度很高，不需要确认
         if confidence >= auto_copy_threshold:

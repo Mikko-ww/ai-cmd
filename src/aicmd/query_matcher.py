@@ -5,6 +5,7 @@
 
 import re
 import hashlib
+from .hash_utils import hash_query
 from typing import List, Dict, Set, Tuple, Optional
 from difflib import SequenceMatcher
 
@@ -209,14 +210,8 @@ class QueryMatcher:
         Returns:
             16位哈希字符串
         """
-        normalized_words = self.normalize_query(query)
-        # 排序确保哈希稳定性
-        normalized_text = " ".join(sorted(normalized_words))
-
-        if not normalized_text:
-            normalized_text = query.lower().strip()
-
-        return hashlib.sha256(normalized_text.encode("utf-8")).hexdigest()[:16]
+        # 使用统一哈希以与数据库保持一致
+        return hash_query(query)
 
     def find_similar_queries(
         self,

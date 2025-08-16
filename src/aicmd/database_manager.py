@@ -10,6 +10,7 @@ import threading
 from pathlib import Path
 from datetime import datetime
 from .config_manager import ConfigManager
+from .hash_utils import hash_query
 
 
 class SafeDatabaseManager:
@@ -27,21 +28,30 @@ class SafeDatabaseManager:
         self._initialize_database()
 
     def _get_database_path(self):
-        """获取数据库文件路径，支持跨平台"""
+        """根据配置获取数据库文件路径，尊重 cache_directory 与 database_file 配置。"""
         try:
-            # 从配置获取自定义路径
-            custom_dir = self.config.get("cache_dir")
-            if custom_dir:
-                cache_dir = Path(custom_dir)
-            else:
-                # 使用默认路径：用户主目录/.ai-cmd
-                cache_dir = Path.home() / ".ai-cmd"
+            cache_directory = self.config.get("cache_directory") or self.config.get(
+                "cache_dir"
+            )
+            database_file = self.config.get("database_file") or "ai_cmd_cache.db"
 
-            # 确保目录存在
-            cache_dir.mkdir(parents=True, exist_ok=True)
+            base_dir = Path(cache_directory or (Path.home() / ".ai-cmd")).expanduser()
+            base_dir.mkdir(parents=True, exist_ok=True)
 
-            db_path = cache_dir / "cache.db"
-            return str(db_path)
+            # 兼容旧版本默认名 ~/.ai-cmd/cache.db
+            new_db_path = base_dir / database_file
+            legacy_db_path = base_dir / "cache.db"
+
+            if not new_db_path.exists() and legacy_db_path.exists():
+                # 迁移旧文件到新命名（保留旧文件作为备份）
+                try:
+                    import shutil
+
+                    shutil.copy2(legacy_db_path, new_db_path)
+                except Exception:
+                    pass
+
+            return str(new_db_path)
 
         except Exception as e:
             print(f"Warning: Failed to determine database path: {e}")
@@ -80,7 +90,8 @@ class SafeDatabaseManager:
             # 验证表结构
             if self._verify_tables():
                 self.is_available = True
-                print(f"Database initialized successfully: {self.db_path}")
+                # 降低噪音，避免常规路径打印
+                # print(f"Database initialized successfully: {self.db_path}")
             else:
                 print("Warning: Database table verification failed")
 
@@ -236,10 +247,8 @@ class SafeDatabaseManager:
                 return None
 
     def generate_query_hash(self, query):
-        """生成查询的唯一哈希值"""
-        # 标准化查询（去除多余空格，转换为小写）
-        normalized_query = " ".join(query.lower().split())
-        return hashlib.sha256(normalized_query.encode("utf-8")).hexdigest()[:16]
+        """统一调用哈希工具，确保一致性"""
+        return hash_query(query)
 
     def cleanup_old_entries(self):
         """清理过期的缓存条目（基于配置的限制）"""

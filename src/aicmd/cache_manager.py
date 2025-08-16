@@ -96,7 +96,7 @@ class CacheManager:
         self.degradation_manager = degradation_manager or GracefulDegradationManager()
 
     # 比较两个命令字符串是否相等
-    def compare_commands(self, command1: str, command2: str) -> bool:
+    def compare_commands(self, command1: Optional[str], command2: Optional[str]) -> bool:
         """
         比较两个命令字符串是否相等
 
@@ -107,21 +107,16 @@ class CacheManager:
         Returns:
             是否相等
         """
-        # copy 
-        command1_cleaned = command1.strip()
-        command2_cleaned = command2.strip()
-        # 去除掉command中的<>括号以及其中的内容 以及前后空格 例如" git commit -m <message>  "-> "git commit -m" 需要保持原有的命令不变
-        command1_cleaned = re.sub(r'<.*?>', '', command1_cleaned).strip()
-        command2_cleaned = re.sub(r'<.*?>', '', command1_cleaned).strip()
-
-
-        # # 打印两个命令是否相等 如果相等 command == command  否则 command1 != command2
-        # if command1_cleaned == command2_cleaned:
-        #     print(f"Commands are equal:\n{command1_cleaned}")
-        # else:
-        #     print(f"Commands are not equal:\n1: {command1_cleaned}\n2: {command2_cleaned}")
-
-        return command1_cleaned == command2_cleaned
+        # 去除前后空白
+        c1 = (command1 or "").strip()
+        c2 = (command2 or "").strip()
+        # 去除占位参数，如 <message>
+        c1 = re.sub(r"<.*?>", "", c1).strip()
+        c2 = re.sub(r"<.*?>", "", c2).strip()
+        # 多个空白折叠
+        c1 = re.sub(r"\s+", " ", c1)
+        c2 = re.sub(r"\s+", " ", c2)
+        return c1 == c2
 
     def save_cache_entry(
         self,

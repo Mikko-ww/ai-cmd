@@ -40,23 +40,53 @@ def get_shell_command_original(prompt):
         model_backup = os.getenv("AI_CMD_OPENROUTER_MODEL_BACKUP")
         model_name = model_backup if is_use_backup_model else model
 
-        response = requests.post(
-            url="https://openrouter.ai/api/v1/chat/completions",
-            headers={
-                "Authorization": f"Bearer {api_key}",
-            },
-            json={
-                "model": model_name,
-                "messages": [
-                    {
-                        "role": "system",
-                        # "content": "You are a helpful assistant that provides shell commands based on a user's natural language prompt. Only provide the shell command, with no additional explanation or formatting.",
-                        "content": "You are a helpful assistant that provides shell commands based on a user's natural language prompt. Only provide the shell command, with no additional explanation or formatting. For any parameters that require user input, enclose them in angle brackets, like so: <parameter_name>.",
-                    },
-                    {"role": "user", "content": prompt},
-                ],
-            },
-        )
+        # 使用 Session + 重试
+        timeout = config.get("api_timeout_seconds", 30)
+        max_retries = config.get("max_retries", 3)
+        session = requests.Session()
+        try:
+            from requests.adapters import HTTPAdapter
+            from urllib3.util.retry import Retry
+
+            retry = Retry(
+                total=max_retries,
+                backoff_factor=0.5,
+                status_forcelist=[429, 500, 502, 503, 504],
+                allowed_methods=["POST"],
+            )
+            adapter = HTTPAdapter(max_retries=retry)
+            session.mount("https://", adapter)
+            session.mount("http://", adapter)
+        except Exception:
+            pass
+
+        payload = {
+            "model": model_name,
+            "messages": [
+                {
+                    "role": "system",
+                    "content": "You are a helpful assistant that provides shell commands based on a user's natural language prompt. Only provide the shell command, with no additional explanation or formatting. For any parameters that require user input, enclose them in angle brackets, like so: <parameter_name>.",
+                },
+                {"role": "user", "content": prompt},
+            ],
+        }
+
+        def do_request(model_to_use):
+            payload["model"] = model_to_use
+            resp = session.post(
+                url="https://openrouter.ai/api/v1/chat/completions",
+                headers={
+                    "Authorization": f"Bearer {api_key}",
+                },
+                json=payload,
+                timeout=timeout,
+            )
+            return resp
+
+        response = do_request(model_name)
+        if response.status_code != 200 and model_backup and not is_use_backup_model:
+            # 主模型失败时尝试备份模型
+            response = do_request(model_backup)
 
         if response.status_code == 200:
             return response.json()["choices"][0]["message"]["content"].strip()
@@ -103,9 +133,6 @@ def get_shell_command(prompt, force_api=False):
         query_matcher = QueryMatcher()
         interactive_manager = InteractiveManager(config, degradation_manager)
 
-        # 生成查询哈希
-        # query_hash = query_matcher.get_query_hash(prompt)
-
         # 查找精确匹配的缓存
         cached_entry = cache_manager.find_exact_match(prompt)
 
@@ -113,7 +140,6 @@ def get_shell_command(prompt, force_api=False):
         source = "API"
         confidence = 0.0
         similarity = 0.0
-
         api_command = None
 
         if cached_entry:
@@ -126,43 +152,56 @@ def get_shell_command(prompt, force_api=False):
             )
 
             # 根据置信度决定处理方式
-            if confidence >= config.get("auto_copy_threshold", 0.9):
+            auto_copy_threshold = float(
+                config.get("auto_copy_threshold", 0.9) or 0.9
+            )
+            if confidence >= auto_copy_threshold:
                 # 高置信度：直接使用缓存并自动复制
-                command = cached_entry.command
-                source = f"Cache (High Confidence)"
-                logger.info(command)
+                command = cached_entry.command or ""
+                source = "Cache (High Confidence)"
+                if command:
+                    logger.info(command)
                 try:
-                    pyperclip.copy(command)
-                    interactive_manager.display_success_message(command, copied=True)
+                    if command:
+                        pyperclip.copy(command)
+                    interactive_manager.display_success_message(
+                        command or "", copied=True
+                    )
                 except Exception as e:
                     degradation_manager.logger.warning(
                         f"Failed to copy to clipboard: {e}"
                     )
-                    interactive_manager.display_success_message(command, copied=False)
+                    interactive_manager.display_success_message(
+                        command or "", copied=False
+                    )
 
-                # 更新使用时间
-                cache_manager.update_last_used(cached_entry.query_hash)
-
-                # 记录为隐式确认（用户没有拒绝）
-                confidence_calc.update_feedback(
-                    cached_entry.query_hash, command, True, 1.0
-                )
+                # 更新使用时间和隐式确认
+                try:
+                    qh = cached_entry.query_hash or cache_manager.db.generate_query_hash(
+                        prompt
+                    )
+                    cache_manager.update_last_used(qh)
+                    confidence_calc.update_feedback(qh, command or "", True, 1.0)
+                except Exception:
+                    pass
 
                 return command
 
-            elif confidence >= config.get("confidence_threshold", 0.8):
+            confidence_threshold = float(
+                config.get("confidence_threshold", 0.8) or 0.8
+            )
+            if confidence >= confidence_threshold:
                 # 中等置信度：使用缓存但询问用户确认
-                command = cached_entry.command
-                source = f"Cache"
+                command = cached_entry.command or ""
+                source = "Cache"
                 similarity = 1.0  # 精确匹配
-
             else:
                 # 低置信度：调用API获取新命令
                 api_command = get_shell_command_original(prompt)
                 if not api_command or api_command.startswith("Error:"):
                     # API调用失败，使用缓存作为备选
-                    command = cached_entry.command
-                    source = f"Cache (API Failed)"
+                    command = (cached_entry.command or "")
+                    source = "Cache (API Failed)"
                 else:
                     command = api_command
                     source = "API"
@@ -172,10 +211,11 @@ def get_shell_command(prompt, force_api=False):
             all_cached_queries = cache_manager.get_all_cached_queries()
 
             if all_cached_queries:
+                similarity_threshold = float(
+                    config.get("similarity_threshold", 0.7) or 0.7
+                )
                 similar_queries = query_matcher.find_similar_queries(
-                    prompt,
-                    all_cached_queries,
-                    threshold=config.get("similarity_threshold", 0.7),
+                    prompt, all_cached_queries, threshold=similarity_threshold
                 )
 
                 if similar_queries:
@@ -196,11 +236,12 @@ def get_shell_command(prompt, force_api=False):
                         # 结合相似度和置信度
                         combined_confidence = confidence * similarity
 
-                        if combined_confidence >= config.get(
-                            "confidence_threshold", 0.8
-                        ):
+                        confidence_threshold = float(
+                            config.get("confidence_threshold", 0.8) or 0.8
+                        )
+                        if combined_confidence >= confidence_threshold:
                             command = cached_command
-                            source = f"Similar Cache"
+                            source = "Similar Cache"
                         else:
                             # 相似度或置信度不够，调用API
                             if api_command is None:
@@ -267,7 +308,9 @@ def get_shell_command(prompt, force_api=False):
                 pyperclip.copy(command)
                 interactive_manager.display_success_message(command, copied=True)
             except Exception as e:
-                degradation_manager.logger.warning(f"Failed to copy to clipboard: {e}")
+                degradation_manager.logger.warning(
+                    f"Failed to copy to clipboard: {e}"
+                )
                 interactive_manager.display_success_message(command, copied=False)
 
         # 保存到缓存（如果是新命令）
@@ -275,7 +318,8 @@ def get_shell_command(prompt, force_api=False):
             cache_manager.save_cache_entry(prompt, command)
 
         # 更新反馈和置信度
-        current_query_hash = query_matcher.get_query_hash(prompt)
+        # 使用数据库统一哈希以确保可查到记录
+        current_query_hash = cache_manager.db.generate_query_hash(prompt)
         confidence_calc.update_feedback(
             current_query_hash, command, confirmed, similarity
         )
@@ -294,7 +338,7 @@ def main():
     try:
         # 创建ArgumentParser实例
         parser = argparse.ArgumentParser(
-            description="AI Command Line Tool v0.2.2 - Convert natural language to shell commands",
+            description="AI Command Line Tool v0.3.0 - Convert natural language to shell commands",
             prog="aicmd",
             formatter_class=argparse.RawDescriptionHelpFormatter,
             epilog="""
@@ -580,7 +624,8 @@ def print_system_status():
 
         # 置信度统计
         try:
-            confidence_calc = ConfidenceCalculator(config, None, degradation_manager)
+            cache_manager = CacheManager(config, degradation_manager)
+            confidence_calc = ConfidenceCalculator(config, cache_manager, degradation_manager)
             conf_stats = confidence_calc.get_confidence_stats()
             if conf_stats.get("status") == "available":
                 print(f"\nConfidence Statistics:")

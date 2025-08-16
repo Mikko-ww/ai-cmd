@@ -5,10 +5,11 @@
 """
 
 import importlib
+from importlib import resources
 import os
 import json
 from pathlib import Path
-from venv import logger
+from .logger import logger
 
 
 class ConfigManager:
@@ -57,9 +58,9 @@ class ConfigManager:
         if json_config:
             config.update(self._flatten_json_config(json_config))
 
-        # # 2. 加载环境变量配置（最高优先级）
-        # env_config = self._load_env_config()
-        # config.update(env_config)
+        # 2. 加载环境变量配置（最高优先级）
+        env_config = self._load_env_config()
+        config.update(env_config)
 
         return config
 
@@ -223,7 +224,7 @@ class ConfigManager:
         if config_data is None:
             try:
                 # 读取包内资源
-                with importlib.resources.files("aicmd").joinpath("setting_template.json").open("r", encoding="utf-8") as f:
+                with resources.files("aicmd").joinpath("setting_template.json").open("r", encoding="utf-8") as f:
                     config_data = json.load(f)
             except Exception:
                 config_data = self._get_default_json_config()
@@ -243,7 +244,7 @@ class ConfigManager:
     def _get_default_json_config(self):
         """获取默认JSON配置结构"""
         return {
-            "version": "0.2.2",
+            "version": "0.3.0",
             "description": "AI Command Line Tool Configuration",
             "basic": {
                 "interactive_mode": False,

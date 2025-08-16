@@ -1,11 +1,11 @@
 {
-  "version": "0.2.1",
+  "version": "0.3.0",
   "description": "AI Command Line Tool Configuration",
   "basic": {
     "interactive_mode": false,
     "cache_enabled": true,
-    "auto_copy_threshold": 0.9,
-    "manual_confirmation_threshold": 0.8
+    "auto_copy_threshold": 0.8,
+    "manual_confirmation_threshold": 0.7
   },
   "api": {
     "use_backup_model": false,
@@ -20,10 +20,10 @@
   },
   "interaction": {
     "interaction_timeout_seconds": 10,
-    "positive_weight": 0.2,
+    "positive_weight": 0.3,
     "negative_weight": 0.6,
-    "similarity_threshold": 0.7,
-    "confidence_threshold": 0.8
+    "similarity_threshold": 0.6,
+    "confidence_threshold": 0.75
   },
   "display": {
     "show_confidence": false,
