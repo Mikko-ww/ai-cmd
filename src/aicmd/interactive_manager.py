@@ -95,6 +95,35 @@ class InteractiveManager:
 
         return f"{colors.get(color, '')}{text}{colors.get('reset', '')}"
 
+    def display_info(self, message: str, color: str = "blue") -> None:
+        """显示一条普通信息（带颜色）"""
+        try:
+            print(self._colorize(message, color))
+        except Exception:
+            print(message)
+
+    def display_metrics(
+        self, confidence: Optional[float], similarity: Optional[float]
+    ) -> None:
+        """在交互流程前优先展示置信度与相似度信息"""
+        parts = []
+        if confidence is not None:
+            conf_color = (
+                "green" if confidence >= 0.8 else "yellow" if confidence >= 0.5 else "red"
+            )
+            parts.append(
+                f"Confidence: {self._colorize(f'{confidence*100:.1f}%', conf_color)}"
+            )
+        if similarity is not None:
+            sim_color = (
+                "green" if similarity >= 0.8 else "yellow" if similarity >= 0.5 else "red"
+            )
+            parts.append(
+                f"Similarity: {self._colorize(f'{similarity*100:.1f}%', sim_color)}"
+            )
+        if parts:
+            print(" | ".join(parts))
+
     def prompt_user_confirmation(
         self,
         command: str,

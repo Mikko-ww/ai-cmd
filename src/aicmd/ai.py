@@ -151,6 +151,9 @@ def get_shell_command(prompt, force_api=False):
                 cached_entry.last_used,
             )
 
+            # 在做决策前优先展示指标
+            interactive_manager.display_metrics(confidence, similarity)
+
             # 根据置信度决定处理方式
             auto_copy_threshold = float(
                 config.get("auto_copy_threshold", 0.9) or 0.9
@@ -197,6 +200,7 @@ def get_shell_command(prompt, force_api=False):
                 similarity = 1.0  # 精确匹配
             else:
                 # 低置信度：调用API获取新命令
+                interactive_manager.display_info("API 请求中...", color="blue")
                 api_command = get_shell_command_original(prompt)
                 if not api_command or api_command.startswith("Error:"):
                     # API调用失败，使用缓存作为备选
@@ -236,6 +240,9 @@ def get_shell_command(prompt, force_api=False):
                         # 结合相似度和置信度
                         combined_confidence = confidence * similarity
 
+                        # 在做决策前优先展示指标（使用当前的 confidence/similarity）
+                        interactive_manager.display_metrics(confidence, similarity)
+
                         confidence_threshold = float(
                             config.get("confidence_threshold", 0.8) or 0.8
                         )
@@ -245,23 +252,27 @@ def get_shell_command(prompt, force_api=False):
                         else:
                             # 相似度或置信度不够，调用API
                             if api_command is None:
+                                interactive_manager.display_info("API 请求中...", color="blue")
                                 api_command = get_shell_command_original(prompt)
                             command = api_command
                             source = "API"
                     else:
                         if api_command is None:
+                            interactive_manager.display_info("API 请求中...", color="blue")
                             api_command = get_shell_command_original(prompt)
                         command = api_command
                         source = "API"
                 else:
                     # 没有找到相似查询，调用API
                     if api_command is None:
+                        interactive_manager.display_info("API 请求中...", color="blue")
                         api_command = get_shell_command_original(prompt)
                     command = api_command
                     source = "API"
             else:
                 # 没有任何缓存，调用API
                 if api_command is None:
+                    interactive_manager.display_info("API 请求中...", color="blue")
                     api_command = get_shell_command_original(prompt)
                 command = api_command
                 source = "API"
