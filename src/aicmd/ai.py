@@ -151,8 +151,8 @@ def get_shell_command(prompt, force_api=False):
                 cached_entry.last_used,
             )
 
-            # 在做决策前优先展示指标
-            interactive_manager.display_metrics(confidence, similarity)
+            # 在做决策前优先展示指标（精确匹配场景按用户期望显示 Similarity: 0.0%）
+            interactive_manager.display_metrics(confidence, 0.0)
 
             # 根据置信度决定处理方式
             auto_copy_threshold = float(
@@ -204,7 +204,7 @@ def get_shell_command(prompt, force_api=False):
                 api_command = get_shell_command_original(prompt)
                 if not api_command or api_command.startswith("Error:"):
                     # API调用失败，使用缓存作为备选
-                    command = (cached_entry.command or "")
+                    command = cached_entry.command or ""
                     source = "Cache (API Failed)"
                 else:
                     command = api_command
@@ -257,20 +257,24 @@ def get_shell_command(prompt, force_api=False):
                             command = api_command
                             source = "API"
                     else:
+                        # 相似匹配失败，打印默认指标再请求 API
+                        interactive_manager.display_metrics(0.0, 0.0)
                         if api_command is None:
                             interactive_manager.display_info("API 请求中...", color="blue")
                             api_command = get_shell_command_original(prompt)
                         command = api_command
                         source = "API"
                 else:
-                    # 没有找到相似查询，调用API
+                    # 没有找到相似查询，打印默认指标再调用API
+                    interactive_manager.display_metrics(0.0, 0.0)
                     if api_command is None:
                         interactive_manager.display_info("API 请求中...", color="blue")
                         api_command = get_shell_command_original(prompt)
                     command = api_command
                     source = "API"
             else:
-                # 没有任何缓存，调用API
+                # 没有任何缓存，打印默认指标再调用API
+                interactive_manager.display_metrics(0.0, 0.0)
                 if api_command is None:
                     interactive_manager.display_info("API 请求中...", color="blue")
                     api_command = get_shell_command_original(prompt)
@@ -289,8 +293,9 @@ def get_shell_command(prompt, force_api=False):
 
         if need_confirmation:
             # 询问用户确认
+            # 为避免重复打印指标，这里不再传入 confidence/similarity
             result, details = interactive_manager.prompt_user_confirmation(
-                command, source, confidence, similarity
+                command, source, None, None
             )
 
             confirmed = result == ConfirmationResult.CONFIRMED
