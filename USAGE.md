@@ -113,7 +113,7 @@ aicmd --create-config
     "cache_size_limit": 1000
   },
   "interaction": {
-    "interaction_timeout_seconds": 10,
+    "interaction_timeout_seconds": 30,
     "positive_weight": 0.2,
     "negative_weight": 0.6,
     "similarity_threshold": 0.7,

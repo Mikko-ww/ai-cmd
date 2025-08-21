@@ -33,7 +33,7 @@ class ConfigManager:
             "max_cache_age_days": 30,
             "cache_size_limit": 1000,
             # 交互配置
-            "interaction_timeout_seconds": 10,
+            "interaction_timeout_seconds": 30,
             "positive_weight": 0.2,
             "negative_weight": 0.6,
             "similarity_threshold": 0.7,
@@ -260,7 +260,7 @@ class ConfigManager:
                 "cache_size_limit": 1000,
             },
             "interaction": {
-                "interaction_timeout_seconds": 10,
+                "interaction_timeout_seconds": 30,
                 "positive_weight": 0.2,
                 "negative_weight": 0.6,
                 "similarity_threshold": 0.7,
