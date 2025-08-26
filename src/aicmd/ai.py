@@ -1,5 +1,4 @@
 import os
-import requests
 import argparse
 import pyperclip
 from dotenv import load_dotenv
@@ -10,6 +9,8 @@ from .cache_manager import CacheManager
 from .confidence_calculator import ConfidenceCalculator
 from .query_matcher import QueryMatcher
 from .interactive_manager import InteractiveManager, ConfirmationResult
+from .api_client import OpenRouterAPIClient
+from .safety_checker import CommandSafetyChecker
 from .logger import logger
 
 load_dotenv()
@@ -28,70 +29,10 @@ License: MIT"""
 
 def get_shell_command_original(prompt):
     """原始的获取shell命令函数，用于向后兼容和降级"""
-
+    
     def main_api_operation():
-        config = ConfigManager()
-        is_use_backup_model = config.get("use_backup_model", False)
-        api_key = os.getenv("AI_CMD_OPENROUTER_API_KEY")
-        if not api_key:
-            logger.error("Error: AI_CMD_OPENROUTER_API_KEY not found in .env file.")
-            return None
-        model = os.getenv("AI_CMD_OPENROUTER_MODEL")
-        model_backup = os.getenv("AI_CMD_OPENROUTER_MODEL_BACKUP")
-        model_name = model_backup if is_use_backup_model else model
-
-        # 使用 Session + 重试
-        timeout = config.get("api_timeout_seconds", 30)
-        max_retries = config.get("max_retries", 3)
-        session = requests.Session()
-        try:
-            from requests.adapters import HTTPAdapter
-            from urllib3.util.retry import Retry
-
-            retry = Retry(
-                total=max_retries,
-                backoff_factor=0.5,
-                status_forcelist=[429, 500, 502, 503, 504],
-                allowed_methods=["POST"],
-            )
-            adapter = HTTPAdapter(max_retries=retry)
-            session.mount("https://", adapter)
-            session.mount("http://", adapter)
-        except Exception:
-            pass
-
-        payload = {
-            "model": model_name,
-            "messages": [
-                {
-                    "role": "system",
-                    "content": "You are a helpful assistant that provides shell commands based on a user's natural language prompt. Only provide the shell command, with no additional explanation or formatting. For any parameters that require user input, enclose them in angle brackets, like so: <parameter_name>.",
-                },
-                {"role": "user", "content": prompt},
-            ],
-        }
-
-        def do_request(model_to_use):
-            payload["model"] = model_to_use
-            resp = session.post(
-                url="https://openrouter.ai/api/v1/chat/completions",
-                headers={
-                    "Authorization": f"Bearer {api_key}",
-                },
-                json=payload,
-                timeout=timeout,
-            )
-            return resp
-
-        response = do_request(model_name)
-        if response.status_code != 200 and model_backup and not is_use_backup_model:
-            # 主模型失败时尝试备份模型
-            response = do_request(model_backup)
-
-        if response.status_code == 200:
-            return response.json()["choices"][0]["message"]["content"].strip()
-        else:
-            return f"Error: {response.status_code} - {response.text}"
+        api_client = OpenRouterAPIClient(degradation_manager=degradation_manager)
+        return api_client.send_chat_with_fallback(prompt)
 
     def fallback_operation():
         return "Error: Unable to process request due to system issues."
@@ -102,7 +43,7 @@ def get_shell_command_original(prompt):
     )
 
 
-def get_shell_command(prompt, force_api=False):
+def get_shell_command(prompt, force_api=False, no_clipboard=False, no_color=False):
     """增强的获取shell命令函数，集成缓存、置信度判断和用户交互"""
 
     # 初始化配置管理器
@@ -114,14 +55,28 @@ def get_shell_command(prompt, force_api=False):
         command = get_shell_command_original(prompt)
         if command:
             logger.info(command)
-            try:
-                pyperclip.copy(command)
-                # 在非交互模式下显示复制确认
-                print("✓ Copied to clipboard!")
-            except Exception as e:
-                degradation_manager.logger.warning(
-                    f"Failed to copy to clipboard: {e}"
-                )
+            
+            # 安全检查
+            safety_checker = CommandSafetyChecker(config)
+            safety_info = safety_checker.get_safety_info(command)
+            
+            # 显示安全警告
+            if safety_info["is_dangerous"] and safety_info["warnings"]:
+                for warning in safety_info["warnings"]:
+                    print(warning)
+            
+            # 复制到剪贴板（考虑安全和用户选择）
+            if not no_clipboard and not safety_info["disable_auto_copy"]:
+                try:
+                    pyperclip.copy(command)
+                    # 在非交互模式下显示复制确认
+                    print("✓ Copied to clipboard!")
+                except Exception as e:
+                    degradation_manager.logger.warning(
+                        f"Failed to copy to clipboard: {e}"
+                    )
+            elif safety_info["disable_auto_copy"]:
+                print("⚠️  Automatic clipboard copying disabled for safety reasons")
         return command
 
     # 初始化所有管理器
@@ -131,7 +86,7 @@ def get_shell_command(prompt, force_api=False):
             config, cache_manager, degradation_manager
         )
         query_matcher = QueryMatcher()
-        interactive_manager = InteractiveManager(config, degradation_manager)
+        interactive_manager = InteractiveManager(config, degradation_manager, no_color=no_color)
 
         # 查找精确匹配的缓存
         cached_entry = cache_manager.find_exact_match(prompt)
@@ -158,25 +113,38 @@ def get_shell_command(prompt, force_api=False):
             auto_copy_threshold = float(
                 config.get("auto_copy_threshold", 0.9) or 0.9
             )
-            if confidence >= auto_copy_threshold:
-                # 高置信度：直接使用缓存并自动复制
+            
+            # 安全检查（提前进行以影响自动复制决策）
+            safety_checker = CommandSafetyChecker(config)
+            safety_info = safety_checker.get_safety_info(cached_entry.command or "")
+            
+            if confidence >= auto_copy_threshold and not safety_info["force_confirmation"]:
+                # 高置信度且不强制确认：直接使用缓存并自动复制
                 command = cached_entry.command or ""
                 source = "Cache (High Confidence)"
                 if command:
                     logger.info(command)
-                try:
-                    if command:
+                
+                # 显示安全警告（如果有）
+                if safety_info["is_dangerous"] and safety_info["warnings"]:
+                    print()
+                    for warning in safety_info["warnings"]:
+                        print(warning)
+                    print()
+                
+                if not no_clipboard and not safety_info["disable_auto_copy"]:
+                    try:
                         pyperclip.copy(command)
-                    interactive_manager.display_success_message(
-                        command or "", copied=True
-                    )
-                except Exception as e:
-                    degradation_manager.logger.warning(
-                        f"Failed to copy to clipboard: {e}"
-                    )
-                    interactive_manager.display_success_message(
-                        command or "", copied=False
-                    )
+                        interactive_manager.display_success_message(command, copied=True)
+                    except Exception as e:
+                        degradation_manager.logger.warning(
+                            f"Failed to copy to clipboard: {e}"
+                        )
+                        interactive_manager.display_success_message(command, copied=False)
+                else:
+                    interactive_manager.display_success_message(command, copied=False)
+                    if safety_info["disable_auto_copy"]:
+                        print("⚠️  Clipboard copying disabled for safety reasons")
 
                 # 更新使用时间和隐式确认
                 try:
@@ -286,10 +254,21 @@ def get_shell_command(prompt, force_api=False):
             print(f"Failed to get valid command: {command}")
             return command
 
+        # 安全检查
+        safety_checker = CommandSafetyChecker(config)
+        safety_info = safety_checker.get_safety_info(command)
+        
+        # 显示安全警告
+        if safety_info["is_dangerous"] and safety_info["warnings"]:
+            print()  # 添加空行提高可读性
+            for warning in safety_info["warnings"]:
+                print(warning)
+            print()  # 添加空行
+
         # 用户交互确认
         need_confirmation = interactive_manager.should_prompt_for_confirmation(
             confidence
-        )
+        ) or safety_info["force_confirmation"]
 
         if need_confirmation:
             # 询问用户确认
@@ -301,7 +280,31 @@ def get_shell_command(prompt, force_api=False):
             confirmed = result == ConfirmationResult.CONFIRMED
 
             if confirmed:
-                # 用户确认，复制到剪贴板
+                # 用户确认，复制到剪贴板（考虑安全和用户选择）
+                if not no_clipboard and not safety_info["disable_auto_copy"]:
+                    try:
+                        pyperclip.copy(command)
+                        interactive_manager.display_success_message(command, copied=True)
+                    except Exception as e:
+                        degradation_manager.logger.warning(
+                            f"Failed to copy to clipboard: {e}"
+                        )
+                        interactive_manager.display_success_message(command, copied=False)
+                else:
+                    interactive_manager.display_success_message(command, copied=False)
+                    if safety_info["disable_auto_copy"]:
+                        print("⚠️  Clipboard copying disabled for safety reasons")
+            else:
+                # 用户拒绝
+                interactive_manager.display_rejection_message("Command not copied")
+
+            # 超时也视为确认
+            if result == ConfirmationResult.TIMEOUT:
+                confirmed = True
+        else:
+            # 不需要确认，直接复制（考虑安全和用户选择）
+            confirmed = True
+            if not no_clipboard and not safety_info["disable_auto_copy"]:
                 try:
                     pyperclip.copy(command)
                     interactive_manager.display_success_message(command, copied=True)
@@ -311,23 +314,9 @@ def get_shell_command(prompt, force_api=False):
                     )
                     interactive_manager.display_success_message(command, copied=False)
             else:
-                # 用户拒绝
-                interactive_manager.display_rejection_message("Command not copied")
-
-            # 超时也视为确认
-            if result == ConfirmationResult.TIMEOUT:
-                confirmed = True
-        else:
-            # 不需要确认，直接复制
-            confirmed = True
-            try:
-                pyperclip.copy(command)
-                interactive_manager.display_success_message(command, copied=True)
-            except Exception as e:
-                degradation_manager.logger.warning(
-                    f"Failed to copy to clipboard: {e}"
-                )
                 interactive_manager.display_success_message(command, copied=False)
+                if safety_info["disable_auto_copy"]:
+                    print("⚠️  Clipboard copying disabled for safety reasons")
 
         # 保存到缓存（如果是新命令）
         if source == "API":
@@ -428,6 +417,12 @@ Examples:
         parser.add_argument(
             "--reset-errors", action="store_true", help="Reset error state"
         )
+        parser.add_argument(
+            "--no-color", action="store_true", help="Disable colored output"
+        )
+        parser.add_argument(
+            "--no-clipboard", action="store_true", help="Disable clipboard integration"
+        )
 
         # 解析命令行参数
         args = parser.parse_args()
@@ -483,7 +478,7 @@ Examples:
             force_api = True
 
         # 获取命令
-        command = get_shell_command(prompt, force_api=force_api)
+        command = get_shell_command(prompt, force_api=force_api, no_clipboard=args.no_clipboard, no_color=args.no_color)
         if not command:
             print("Error: No command generated.")
 
