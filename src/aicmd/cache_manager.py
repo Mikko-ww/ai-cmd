@@ -5,12 +5,12 @@
 
 import platform
 import os
-from datetime import datetime, timedelta
+from datetime import datetime
 import re
 from typing import Optional, List, Dict, Any, Tuple
 from .database_manager import SafeDatabaseManager
 from .config_manager import ConfigManager
-from .error_handler import GracefulDegradationManager, safe_cache_operation
+from .error_handler import GracefulDegradationManager
 
 
 class CacheEntry:
