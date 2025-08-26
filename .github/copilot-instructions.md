@@ -1,68 +1,96 @@
-# ai-cmd Project Guidelines
+# AI Command Line Tool - AI Agent Instructions
 
-## Project Overview
-This is a minimalist command-line tool that converts natural language prompts to shell commands using OpenRouter API. The entire application consists of a single Python file (`ai.py`) with focused functionality.
+## Project Architecture
 
-## Architecture & Key Files
-- **`ai.py`**: The complete application - API client, command parsing, clipboard integration
-- **`pyproject.toml`**: Defines the `aicmd` console script entry point pointing to `ai:main`
-- **`.env`**: Required for OpenRouter API key (`AI_CMD_OPENROUTER_API_KEY`) and model selection
+This is an intelligent CLI tool that converts natural language to shell commands using OpenRouter API, with sophisticated caching and user interaction features.
+
+### Core Architecture Pattern
+- **Graceful Degradation**: All enhanced features (caching, confidence scoring, user interaction) wrap around the basic API functionality in `get_shell_command_original()`. Any failure in enhanced features automatically falls back to basic mode.
+- **Multi-layer Configuration**: Environment variables > JSON config files > defaults, with validation and type conversion throughout.
+- **Database-backed Caching**: SQLite with cross-platform safety, confidence scoring, and similarity matching for query optimization.
+
+### Key Components
+
+**Primary Flow (`ai.py`)**: 
+- `get_shell_command()` orchestrates all components with fallback to `get_shell_command_original()`
+- Interactive vs non-interactive modes change behavior significantly
+- Confidence thresholds determine auto-copy vs user confirmation
+
+**Configuration (`config_manager.py`)**:
+- Nested JSON structure in `setting_template.json` flattened to simple keys
+- User config: `~/.ai-cmd/settings.json`, Project config: `.ai-cmd.json`
+- Environment variables use `AI_CMD_*` prefix
+
+**Caching System**:
+- `cache_manager.py`: CRUD operations with `CacheEntry` model
+- `database_manager.py`: Thread-safe SQLite with graceful degradation
+- `confidence_calculator.py`: Bayesian-style scoring with time decay
+- `query_matcher.py`: Semantic similarity for fuzzy matching
 
 ## Development Workflows
 
-### Package Management with uv
-This project uses `uv` (not pip/conda). Always use:
+### Essential Commands
 ```bash
-uv sync          # Install dependencies
-uv add <package> # Add new dependencies
-uv run aicmd     # Run the tool
+uv sync                              # Install/sync dependencies
+uv pip install -e .                  # Editable install
+aicmd "list files" --force-api       # Test basic functionality
+aicmd --status                       # Debug cache/confidence stats
+aicmd --create-config                # Generate user config
 ```
 
-### Testing & Quality
-Use the predefined VS Code tasks:
-- "安装依赖" - `uv sync`
-- "运行 ai-cmd" - `uv run aicmd ${input:prompt}`
-- "格式化代码" - `uv run black ai.py`
-- "检查代码质量" - `uv run flake8 ai.py`
+### Testing Strategy
+- No formal test suite currently exists
+- Manual testing uses `--force-api`, `--disable-interactive`, `--status` flags
+- Cache debugging with `--recalculate-confidence`, `--cleanup-cache`
+- Configuration validation with `--validate-config`, `--show-config`
 
-### Environment Setup
-Always create `.env` from `.env.example`:
-```bash
-cp .env.example .env
-# Then edit .env with actual API key
-```
+### Configuration Debugging
+Interactive mode behavior changes dramatically based on thresholds:
+- `auto_copy_threshold` (0.9): Auto-copy without confirmation
+- `confidence_threshold` (0.8): Minimum for cache usage
+- `similarity_threshold` (0.7): Fuzzy matching cutoff
 
-## Code Patterns & Conventions
+## Project-Specific Patterns
 
-### Single-File Architecture
-- All functionality in `ai.py` - no modules or packages
-- Simple functions: `get_shell_command()` for API calls, `main()` for CLI
-- Direct imports at top: `requests`, `pyperclip`, `dotenv`
+### Error Handling Philosophy
+Every enhanced feature uses `GracefulDegradationManager` to ensure the basic API functionality always works. Never let caching/interaction failures break core functionality.
 
-### Error Handling
-- Check for missing API key with `os.getenv()` validation
-- Handle HTTP errors with status code checks
-- Return error strings rather than raising exceptions
+### Database Schema Awareness
+The SQLite schema includes OS/shell context fields for cross-platform compatibility. Hash strategies ("simple" vs "normalized") affect query matching behavior.
 
-### API Integration
-- Uses OpenRouter chat completions endpoint
-- System prompt enforces "shell command only" responses
-- Model configurable via `AI_CMD_OPENROUTER_MODEL` env var
+### Safety System
+`CommandSafetyChecker` integrates with confidence scoring - dangerous commands force confirmation even with high confidence scores. Auto-clipboard copying can be disabled for security.
 
-### User Experience
-- Automatically copies output to clipboard with `pyperclip`
-- Minimal output - just the command, no extra formatting
-- Command-line args joined with spaces as single prompt
+### Confidence Scoring Logic
+- Time-based decay of confidence over time
+- Positive/negative feedback weights from user confirmations
+- Combined with similarity scores for fuzzy matches
+- Recalculation affects entire cache when algorithm changes
 
-## Development Environment
-- Python 3.11+ required (see `pyproject.toml`)
-- VS Code configured for Black formatting and Flake8 linting
-- `.venv` virtual environment expected in project root
-- Environment variables loaded from `.env` file automatically
+## Integration Points
 
-## Adding Features
-When extending functionality:
-1. Keep everything in `ai.py` unless compelling reason to split
-2. Maintain the simple request/response pattern
-3. Use environment variables for configuration
-4. Test with `uv run aicmd "your test prompt"`
+### OpenRouter API Client
+- Supports primary/backup models via environment variables
+- Custom base URLs for proxy/testing scenarios
+- Fallback model switching on API failures
+
+### Cross-platform Input Handling
+`cross_platform_input.py` provides timeout-based user input across Windows/Unix systems for interactive confirmation prompts.
+
+### Clipboard Integration
+Automatic clipboard copying with safety override - uses `pyperclip` with graceful degradation on clipboard failures.
+
+## Key Files for Understanding
+
+- `src/aicmd/ai.py`: Main orchestration and CLI entry point
+- `src/aicmd/setting_template.json`: Complete configuration structure reference
+- `src/aicmd/config_manager.py`: Multi-source configuration loading logic
+- `src/aicmd/cache_manager.py`: Database interaction patterns and CacheEntry model
+- `AGENTS.md`: Comprehensive development guidelines and workflow details
+
+## Common Debugging Approaches
+
+1. **Configuration Issues**: Use `aicmd --show-config` to see effective configuration and sources
+2. **Cache Problems**: Check `aicmd --status` for database availability and confidence statistics
+3. **API Issues**: Test with `--force-api` to bypass all caching layers
+4. **Interactive Behavior**: Use `--disable-interactive` to isolate interaction-related issues
