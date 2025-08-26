@@ -5,7 +5,7 @@ API客户端模块
 
 import os
 import requests
-from typing import Optional, Dict, Any
+from typing import Optional
 from .config_manager import ConfigManager
 from .error_handler import GracefulDegradationManager
 from .logger import logger
@@ -13,21 +13,25 @@ from .logger import logger
 
 class APIClientError(Exception):
     """API客户端异常基类"""
+
     pass
 
 
 class APITimeoutError(APIClientError):
     """API超时异常"""
+
     pass
 
 
 class APIRateLimitError(APIClientError):
     """API限流异常"""
+
     pass
 
 
 class APIAuthError(APIClientError):
     """API认证异常"""
+
     pass
 
 
@@ -38,21 +42,22 @@ class OpenRouterAPIClient:
         self,
         config_manager: Optional[ConfigManager] = None,
         degradation_manager: Optional[GracefulDegradationManager] = None,
+        base_url: Optional[str] = None,
     ):
         """初始化API客户端"""
         self.config = config_manager or ConfigManager()
         self.degradation_manager = degradation_manager or GracefulDegradationManager()
-        
+
         # API配置
-        self.base_url = "https://openrouter.ai/api/v1/chat/completions"
+        self.base_url = base_url or "https://openrouter.ai/api/v1/chat/completions"
         self.api_key = os.getenv("AI_CMD_OPENROUTER_API_KEY")
         self.model = os.getenv("AI_CMD_OPENROUTER_MODEL")
         self.model_backup = os.getenv("AI_CMD_OPENROUTER_MODEL_BACKUP")
-        
+
         # 请求配置
         self.timeout = self.config.get("api_timeout_seconds", 30)
         self.max_retries = self.config.get("max_retries", 3)
-        
+
         # 系统提示词
         self.system_prompt = (
             "You are a helpful assistant that provides shell commands based on a user's "
@@ -60,7 +65,7 @@ class OpenRouterAPIClient:
             "explanation or formatting. For any parameters that require user input, "
             "enclose them in angle brackets, like so: <parameter_name>."
         )
-        
+
         # 初始化session
         self._session = None
 
@@ -82,35 +87,41 @@ class OpenRouterAPIClient:
                 self._session.mount("https://", adapter)
                 self._session.mount("http://", adapter)
             except Exception as e:
-                self.degradation_manager.logger.warning(f"Failed to setup retry strategy: {e}")
-        
+                self.degradation_manager.logger.warning(
+                    f"Failed to setup retry strategy: {e}"
+                )
+
         return self._session
 
-    def send_chat(self, prompt: str, model: Optional[str] = None, timeout: Optional[int] = None) -> str:
+    def send_chat(
+        self, prompt: str, model: Optional[str] = None, timeout: Optional[int] = None
+    ) -> str:
         """
         发送聊天请求到OpenRouter API
-        
+
         Args:
             prompt: 用户输入的提示词
             model: 使用的模型名称（可选，默认使用配置中的模型）
             timeout: 请求超时时间（可选，默认使用配置中的超时时间）
-            
+
         Returns:
             AI生成的命令字符串
-            
+
         Raises:
             APIClientError: API请求相关错误
         """
         if not self.api_key:
             raise APIAuthError("AI_CMD_OPENROUTER_API_KEY not found in environment")
-        
+
         # 确定使用的模型
         is_use_backup_model = self.config.get("use_backup_model", False)
-        target_model = model or (self.model_backup if is_use_backup_model else self.model)
-        
+        target_model = model or (
+            self.model_backup if is_use_backup_model else self.model
+        )
+
         if not target_model:
             raise APIClientError("No model specified in configuration")
-        
+
         # 构建请求载荷
         payload = {
             "model": target_model,
@@ -119,10 +130,10 @@ class OpenRouterAPIClient:
                 {"role": "user", "content": prompt},
             ],
         }
-        
+
         headers = {"Authorization": f"Bearer {self.api_key}"}
         request_timeout = timeout or self.timeout
-        
+
         try:
             session = self._get_session()
             response = session.post(
@@ -131,7 +142,7 @@ class OpenRouterAPIClient:
                 json=payload,
                 timeout=request_timeout,
             )
-            
+
             # 检查响应状态
             if response.status_code == 200:
                 try:
@@ -146,8 +157,10 @@ class OpenRouterAPIClient:
             elif response.status_code >= 500:
                 raise APIClientError(f"API server error: {response.status_code}")
             else:
-                raise APIClientError(f"API request failed: {response.status_code} - {response.text}")
-                
+                raise APIClientError(
+                    f"API request failed: {response.status_code} - {response.text}"
+                )
+
         except requests.exceptions.Timeout:
             raise APITimeoutError(f"API request timed out after {request_timeout}s")
         except requests.exceptions.ConnectionError as e:
@@ -158,13 +171,14 @@ class OpenRouterAPIClient:
     def send_chat_with_fallback(self, prompt: str) -> str:
         """
         带有后备模型的聊天请求
-        
+
         Args:
             prompt: 用户输入的提示词
-            
+
         Returns:
             AI生成的命令字符串或错误信息
         """
+
         def main_api_operation():
             try:
                 # 尝试主模型
