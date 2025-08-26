@@ -86,7 +86,7 @@ def get_shell_command(prompt, force_api=False, no_clipboard=False, no_color=Fals
             config, cache_manager, degradation_manager
         )
         query_matcher = QueryMatcher()
-        interactive_manager = InteractiveManager(config, degradation_manager)
+        interactive_manager = InteractiveManager(config, degradation_manager, no_color=no_color)
 
         # 查找精确匹配的缓存
         cached_entry = cache_manager.find_exact_match(prompt)

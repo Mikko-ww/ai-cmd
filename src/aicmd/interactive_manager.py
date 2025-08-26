@@ -29,10 +29,14 @@ class InteractiveManager:
         self,
         config_manager: Optional[ConfigManager] = None,
         degradation_manager: Optional[GracefulDegradationManager] = None,
+        no_color: bool = False,
     ):
         """初始化交互管理器"""
         self.config = config_manager or ConfigManager()
         self.degradation_manager = degradation_manager or GracefulDegradationManager()
+        
+        # 颜色设置（优先使用参数，其次配置文件）
+        self.no_color = no_color
 
         # 从配置获取交互参数（与模板对齐，同时兼容旧键名）
         # 读取并强制类型的配置项
@@ -58,7 +62,7 @@ class InteractiveManager:
         colored_output = self.config.get("colored_output", None)
         if colored_output is None:
             colored_output = self.config.get("use_colors", True)
-        self.use_colors = bool(colored_output) and self._supports_color()
+        self.use_colors = bool(colored_output) and self._supports_color() and not self.no_color
 
         # 交互统计
         self.interaction_stats = {
