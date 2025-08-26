@@ -5,11 +5,10 @@
 
 import math
 from typing import Dict, Any, Optional, Tuple
-from datetime import datetime, timedelta
+from datetime import datetime
 from .config_manager import ConfigManager
 from .cache_manager import CacheManager, CacheEntry
-from .database_manager import SafeDatabaseManager
-from .error_handler import GracefulDegradationManager, safe_cache_operation
+from .error_handler import GracefulDegradationManager
 
 
 class ConfidenceCalculator:
@@ -28,7 +27,7 @@ class ConfidenceCalculator:
 
         # 从配置获取权重参数
         self.positive_weight = self.config.get("positive_weight", 0.2)
-        self.negative_weight = self.config.get("negative_weight", 0.5)
+        self.negative_weight = self.config.get("negative_weight", 0.6)
         self.decay_factor = self.config.get("confidence_decay_factor", 0.95)
         self.initial_confidence = self.config.get("initial_confidence", 0.3)
 

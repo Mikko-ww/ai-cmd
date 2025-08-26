@@ -4,9 +4,8 @@
 """
 
 import re
-import hashlib
 from .hash_utils import hash_query
-from typing import List, Dict, Set, Tuple, Optional
+from typing import List, Dict, Set, Tuple
 from difflib import SequenceMatcher
 
 

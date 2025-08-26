@@ -410,10 +410,18 @@ Interactive Mode Help:
             auto_copy_threshold = float(self.config.get("auto_copy_threshold", 0.9) or 0.9)
         except Exception:
             auto_copy_threshold = 0.9
+        try:
+            manual_confirmation_threshold = float(self.config.get("manual_confirmation_threshold", 0.8) or 0.8)
+        except Exception:
+            manual_confirmation_threshold = 0.8
 
         # 置信度很高，不需要确认
         if confidence >= auto_copy_threshold:
             return False
+
+        # 置信度高于手动确认阈值，需要确认
+        if confidence >= manual_confirmation_threshold:
+            return True
 
         # 置信度中等，需要确认
         if confidence >= confidence_threshold:

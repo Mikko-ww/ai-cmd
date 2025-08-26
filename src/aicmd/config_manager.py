@@ -4,7 +4,6 @@
 支持环境变量和JSON配置文件的多层配置源
 """
 
-import importlib
 from importlib import resources
 import os
 import json
@@ -320,7 +319,7 @@ class ConfigManager:
                     return default
 
             return parsed_value
-        except ValueError as e:
+        except ValueError:
             print(
                 f"Warning: Invalid float value for {key}: '{os.getenv(key)}', using default: {default}"
             )
@@ -351,7 +350,7 @@ class ConfigManager:
                     )
 
             return parsed_value
-        except ValueError as e:
+        except ValueError:
             print(
                 f"Warning: Invalid integer value for {key}: '{os.getenv(key)}', using default: {default}"
             )
