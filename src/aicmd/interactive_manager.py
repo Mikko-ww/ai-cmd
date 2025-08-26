@@ -3,13 +3,13 @@
 提供友好的用户确认界面，支持Y/N确认、超时处理、异常中断等情况
 """
 
-import signal
 import sys
 import os
 from typing import Optional, Tuple, Dict, Any
 from enum import Enum
 from .config_manager import ConfigManager
 from .error_handler import GracefulDegradationManager
+from .cross_platform_input import universal_input, InputTimeoutError
 
 
 class ConfirmationResult(Enum):
@@ -226,44 +226,23 @@ class InteractiveManager:
                 print(info_text)
 
     def _get_user_input(self, timeout: int) -> ConfirmationResult:
-        """获取用户输入，处理超时和异常"""
-
-        def timeout_handler(signum, frame):
-            raise TimeoutError("User input timeout")
-
-        # 设置超时处理（仅在Unix系统上）
-        if hasattr(signal, "SIGALRM"):
-            original_handler = signal.signal(signal.SIGALRM, timeout_handler)
-            signal.alarm(timeout)
+        """获取用户输入，处理超时和异常（跨平台支持）"""
 
         try:
-            # 获取用户输入
+            # 获取用户输入（跨平台超时）
             prompt = self._colorize("Copy to clipboard? [Y/n]: ", "blue")
-            response = input(prompt).strip().lower()
-
-            # 取消超时
-            if hasattr(signal, "SIGALRM"):
-                signal.alarm(0)
-                signal.signal(signal.SIGALRM, original_handler)
-
+            response = universal_input.input_with_timeout(prompt, timeout).strip().lower()
+            
             # 解析响应
             return self._parse_response(response)
 
         except (KeyboardInterrupt, EOFError):
             # Ctrl+C 或 Ctrl+D
-            if hasattr(signal, "SIGALRM"):
-                signal.alarm(0)
-                signal.signal(signal.SIGALRM, original_handler)
-
             print(self._colorize("\n✗ Cancelled", "red"))
             return ConfirmationResult.CANCELLED
 
-        except TimeoutError:
+        except InputTimeoutError:
             # 超时处理
-            if hasattr(signal, "SIGALRM"):
-                signal.alarm(0)
-                signal.signal(signal.SIGALRM, original_handler)
-
             if self.auto_confirm_on_timeout:
                 print(
                     self._colorize(
@@ -277,10 +256,6 @@ class InteractiveManager:
 
         except Exception as e:
             # 其他异常
-            if hasattr(signal, "SIGALRM"):
-                signal.alarm(0)
-                signal.signal(signal.SIGALRM, original_handler)
-
             print(self._colorize(f"\n❌ Input error: {e}", "red"))
             self.degradation_manager.logger.warning(f"Input error: {e}")
             return ConfirmationResult.ERROR
@@ -326,34 +301,20 @@ class InteractiveManager:
     def quick_confirm(
         self, message: str, default: bool = True, timeout: int = 10
     ) -> bool:
-        """快速确认对话框，用于简单的是/否问题"""
+        """快速确认对话框，用于简单的是/否问题（跨平台支持）"""
         try:
             default_text = "[Y/n]" if default else "[y/N]"
             prompt = f"{message} {default_text}: "
 
-            def timeout_handler(signum, frame):
-                raise TimeoutError()
-
-            if hasattr(signal, "SIGALRM"):
-                original_handler = signal.signal(signal.SIGALRM, timeout_handler)
-                signal.alarm(timeout)
-
             try:
-                response = input(prompt).strip().lower()
-
-                if hasattr(signal, "SIGALRM"):
-                    signal.alarm(0)
-                    signal.signal(signal.SIGALRM, original_handler)
+                response = universal_input.input_with_timeout(prompt, timeout).strip().lower()
 
                 if not response:
                     return default
 
                 return response in ["y", "yes", "是", "好"]
 
-            except (KeyboardInterrupt, EOFError, TimeoutError):
-                if hasattr(signal, "SIGALRM"):
-                    signal.alarm(0)
-                    signal.signal(signal.SIGALRM, original_handler)
+            except (KeyboardInterrupt, EOFError, InputTimeoutError):
                 return default
 
         except Exception as e:
