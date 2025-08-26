@@ -1,218 +1,116 @@
-# AI Command Line Tool
+AI Command (aicmd)
+===================
 
-`ai-cmd` is an intelligent command-line tool that converts natural language prompts into shell commands using the OpenRouter API. With advanced caching, user interaction features, and flexible configuration options, it's designed to boost your productivity while maintaining safety and reliability.
+A smart CLI that converts natural language into shell commands with caching, safety checks, and interactive confirmation — powered by OpenRouter.
 
-## ✨ Features
+Why you’ll like it
+- Natural language to shell commands (no extra prose)
+- Smart cache with confidence learning and time-decay
+- Interactive confirmation with safety warnings and clipboard copy
+- Similar-query reuse to avoid repeated API calls
+- JSON output for scripting and automation
+- Graceful degradation: even if cache/DB fails, API flow still works
 
-- 🧠 **AI-Powered Command Generation**: Convert natural language to shell commands using state-of-the-art AI models
-- 🚀 **Smart Caching System**: Intelligent command caching with confidence-based decisions  
-- 🔄 **Interactive Mode**: User confirmation system for enhanced safety
-- ⚙️ **Flexible Configuration**: Multi-layer configuration with JSON files and environment variables
-- 📊 **Statistics & Analytics**: Detailed usage statistics and performance metrics
-- 🛡️ **Error Resilience**: Graceful degradation and error recovery mechanisms
-- 📋 **Auto-Clipboard**: Automatic clipboard integration for seamless workflow
+Quick start
+1) Install dependencies and the CLI
 
-## 🚀 Quick Start
+- Using uv (recommended)
+  - `uv sync`
+  - `uv pip install -e .`
 
-### Installation
+2) Configure your API key (required)
 
-```bash
-# Clone the repository
-git clone https://github.com/Mikko-ww/ai-cmd.git
-cd ai-cmd
+- `export AI_CMD_OPENROUTER_API_KEY=sk-...`
+- Optional models: `AI_CMD_OPENROUTER_MODEL`, `AI_CMD_OPENROUTER_MODEL_BACKUP`
 
-# Install dependencies (requires uv)
-uv sync
+3) Run a prompt
 
-# Install the tool
-uv pip install -e .
+- `aicmd "list all files recursively"`
+
+4) Enable interactive mode (optional)
+
+- `aicmd --create-config` then set `basic.interactive_mode` to `true` in `~/.ai-cmd/settings.json`
+- Or inspect with `aicmd --show-config`
+
+CLI at a glance
+- Basic: `aicmd "<prompt>"`
+- Force API only: `--force-api`
+- Disable interactive (for this run): `--disable-interactive`
+- Output JSON: `--json`
+- No clipboard/color: `--no-clipboard`, `--no-color`
+- Status and maintenance: `--status`, `--reset-errors`, `--cleanup-cache`, `--recalculate-confidence`
+- Config helpers: `--config`, `--show-config`, `--create-config`, `--create-config-force`, `--validate-config`, `--set-config KEY VALUE`
+- Networking: `--base-url https://proxy.example/api/v1/chat/completions`
+
+Configuration
+- Locations (highest priority last-write wins)
+  - User config: `~/.ai-cmd/settings.json`
+  - Project config: `./.ai-cmd.json`
+  - Environment variables (override specific keys)
+  - Built-in defaults
+
+- Create a starter config
+  - `aicmd --create-config` (or `--create-config-force` to overwrite)
+
+- Show and validate
+  - `aicmd --show-config`
+  - `aicmd --validate-config`
+
+- Update a key
+  - `aicmd --set-config interactive_mode true`
+
+- Sample config (abbreviated)
 ```
-
-### Configuration
-
-1. **Set up your API key:**
-   ```bash
-   cp .env.example .env
-   # Edit .env and add your OpenRouter API key
-   ```
-
-2. **Create user configuration (optional):**
-   ```bash
-   aicmd --create-config
-   ```
-
-### Basic Usage
-
-```bash
-# Generate a command
-aicmd "list all files in current directory"
-
-# Force API call (bypass cache)
-aicmd "create new directory" --force-api
-
-# Disable interactive mode for automation
-aicmd "check disk usage" --disable-interactive
-```
-
-## 📖 Documentation
-
-### Command Line Options
-
-| Option | Description |
-|--------|-------------|
-| `-h, --help` | Show help message and exit |
-| `-v, --version` | Show version information |
-| `--config` | Show current configuration |
-| `--show-config` | Show detailed configuration summary |
-| `--create-config` | Create user configuration file |
-| `--validate-config` | Validate current configuration |
-| `--force-api` | Force API call, bypass cache |
-| `--disable-interactive` | Disable interactive mode |
-| `--status` | Show cache and interaction statistics |
-| `--reset-errors` | Reset error state |
-
-### Configuration System
-
-`ai-cmd` supports multi-layer configuration with the following priority order:
-
-1. **Environment Variables** (highest priority)
-2. **JSON Configuration Files**
-3. **Default Values** (fallback)
-
-#### Configuration File Locations
-
-- User config: `~/.ai-cmd/settings.json`
-- Project config: `.ai-cmd.json` (in current directory)
-
-#### Configuration Options
-
-```json
 {
+  "version": "0.4.0",
   "basic": {
-    "interactive_mode": false,
+    "interactive_mode": true,
     "cache_enabled": true,
-    "auto_copy_threshold": 0.9,
-    "manual_confirmation_threshold": 0.8
+    "auto_copy_threshold": 1.0,
+    "manual_confirmation_threshold": 0.7
   },
-  "api": {
-    "timeout_seconds": 30,
-    "max_retries": 3
-  },
-  "cache": {
-    "cache_directory": "~/.ai-cmd",
-    "database_file": "cache.db",
-    "max_cache_age_days": 30,
-    "cache_size_limit": 1000
-  },
-  "interaction": {
-    "interaction_timeout_seconds": 30,
-    "positive_weight": 0.2,
-    "negative_weight": 0.6,
-    "similarity_threshold": 0.7,
-    "confidence_threshold": 0.8
-  },
-  "display": {
-    "show_confidence": false,
-    "show_source": false,
-    "colored_output": true
-  }
+  "api": { "use_backup_model": false, "timeout_seconds": 30, "max_retries": 3 },
+  "cache": { "cache_directory": "~/.ai-cmd", "database_file": "cache.db", "max_cache_age_days": 30, "cache_size_limit": 1000 },
+  "interaction": { "interaction_timeout_seconds": 30, "positive_weight": 0.3, "negative_weight": 0.6, "similarity_threshold": 0.6, "confidence_threshold": 0.75 },
+  "display": { "show_confidence": false, "show_source": false, "colored_output": true }
 }
 ```
 
-### Environment Variables
+Behavior and workflow
+- Modes
+  - Basic mode: when `interactive_mode` is false or `--force-api`/`--disable-interactive` is used; directly calls the API and copies the command (unless disabled).
+  - Interactive mode: shows confidence/similarity, runs safety checks, asks for confirmation depending on thresholds, and learns from your feedback.
 
-| Variable | Description | Default |
-|----------|-------------|---------|
-| `AI_CMD_OPENROUTER_API_KEY` | OpenRouter API key | Required |
-| `AI_CMD_OPENROUTER_MODEL` | AI model to use | `google/gemma-3-27b-it:free` |
-| `AI_CMD_OPENROUTER_MODEL_BACKUP` | Backup AI model | Optional |
+- Cache and learning
+  - SQLite DB: `~/.ai-cmd/cache.db` (configurable path/filename)
+  - Exact-match hits compute a confidence score from confirmations/rejections with time-decay
+  - Similar-query suggestions when no exact match (Jaccard + sequence similarity)
+  - Maintenance: `--cleanup-cache` (TTL/size), `--recalculate-confidence`
 
+- Safety checks
+  - Detects potentially dangerous commands (e.g., `rm -rf`, `dd of=/dev/...`, etc.)
+  - Can force confirmation and disable auto-copy for risky commands
 
-## 🔧 Advanced Features
+- JSON output
+  - `--json` prints: `{ command, source, confidence, similarity, dangerous, confirmed }`
 
-### Smart Caching
+Environment variables
+- Required: `AI_CMD_OPENROUTER_API_KEY`
+- Optional: `AI_CMD_OPENROUTER_MODEL`, `AI_CMD_OPENROUTER_MODEL_BACKUP`
+- Optional tuning (overrides some config): `AI_CMD_INTERACTIVE_MODE`, `AI_CMD_CONFIDENCE_THRESHOLD`, `AI_CMD_AUTO_COPY_THRESHOLD`, `AI_CMD_POSITIVE_WEIGHT`, `AI_CMD_NEGATIVE_WEIGHT`, `AI_CMD_SIMILARITY_THRESHOLD`, `AI_CMD_CACHE_ENABLED`, `AI_CMD_CACHE_SIZE_LIMIT`, `AI_CMD_CACHE_DIR`
 
-The tool maintains a local cache of command translations with confidence scoring:
+Troubleshooting
+- “API key not found”: set `AI_CMD_OPENROUTER_API_KEY`
+- “No model specified”: set `AI_CMD_OPENROUTER_MODEL` or enable backup via config
+- “Rate limit exceeded”: the client retries; try again or set a backup model
+- Cache disabled due to errors: run `aicmd --reset-errors`, check `~/.ai-cmd/logs/`
 
-- **High Confidence (≥0.9)**: Commands are automatically copied to clipboard
-- **Medium Confidence (0.8-0.9)**: User confirmation required in interactive mode
-- **Low Confidence (<0.8)**: Always requires confirmation or API call
+Development
+- Install: `uv sync`
+- Run CLI locally: `uv run aicmd "list all files"`
+- Format/lint: `uv run black src/` and `uv run flake8 src/`
+- Tests: `uv run python -m pytest`
 
-### Interactive Mode
+License
+- MIT. See repository for details.
 
-When enabled, interactive mode provides:
-- User confirmation for generated commands
-- Feedback collection to improve future suggestions
-- Safety prompts for potentially dangerous operations
-
-### Statistics and Monitoring
-
-```bash
-# View detailed statistics
-aicmd --status
-
-# View configuration status
-aicmd --show-config
-
-# Validate configuration
-aicmd --validate-config
-```
-
-## 🛠️ Development
-
-### Requirements
-
-- Python 3.9+
-- [uv](https://docs.astral.sh/uv/) for package management
-
-### Setup
-
-```bash
-# Install development dependencies
-uv sync
-
-# Run linting
-uv run black src/
-uv run flake8 src/
-
-# Run tests
-uv run python -m pytest
-```
-
-### Project Structure
-
-```
-ai-cmd/
-├── src/aicmd/           # Main package
-│   ├── ai.py           # Core functionality
-│   ├── config_manager.py    # Configuration management
-│   ├── cache_manager.py     # Caching system
-│   ├── interactive_manager.py  # User interaction
-|   ├── setting_template.json     # Configuration template
-│   └── ...
-├── pyproject.toml          # Project configuration
-└── README.md              # This file
-```
-
-## 🤝 Contributing
-
-1. Fork the repository
-2. Create a feature branch: `git checkout -b feature-name`
-3. Make your changes and add tests
-4. Run the test suite: `uv run python -m pytest`
-5. Submit a pull request
-
-## 📄 License
-
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
-
-## 🙏 Acknowledgments
-
-- OpenRouter for providing AI model access
-- The open-source community for inspiration and tools
-
-## 🔗 Links
-
-- **GitHub**: [https://github.com/Mikko-ww/ai-cmd](https://github.com/Mikko-ww/ai-cmd)
-- **Issues**: [https://github.com/Mikko-ww/ai-cmd/issues](https://github.com/Mikko-ww/ai-cmd/issues)
-- **Documentation**: [README.md](README.md)

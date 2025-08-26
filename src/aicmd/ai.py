@@ -403,7 +403,7 @@ def main():
     try:
         # 创建ArgumentParser实例
         parser = argparse.ArgumentParser(
-            description="AI Command Line Tool v0.3.0 - Convert natural language to shell commands",
+            description=f"AI Command Line Tool v{__version__} - Convert natural language to shell commands",
             prog="aicmd",
             formatter_class=argparse.RawDescriptionHelpFormatter,
             epilog="""
