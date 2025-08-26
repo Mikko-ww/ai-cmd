@@ -41,6 +41,8 @@ class ConfigManager:
             "show_confidence": False,
             "show_source": False,
             "colored_output": True,
+            # 哈希策略配置
+            "hash_strategy": "simple",  # simple | normalized
             # 兼容性配置（旧版本）
             "cache_dir": None,
         }
@@ -155,8 +157,14 @@ class ConfigManager:
             )
 
         # 过滤None值
-        return {k: v for k, v in flattened.items() if v is not None}
+        flattened_filtered = {k: v for k, v in flattened.items() if v is not None}
 
+        # 处理顶级配置项
+        for key in ["hash_strategy"]:
+            if key in json_config:
+                flattened_filtered[key] = json_config[key]
+
+        return flattened_filtered
 
     def _load_env_config(self):
         """从环境变量加载配置（保持向后兼容性）"""
@@ -223,7 +231,11 @@ class ConfigManager:
         if config_data is None:
             try:
                 # 读取包内资源
-                with resources.files("aicmd").joinpath("setting_template.json").open("r", encoding="utf-8") as f:
+                with (
+                    resources.files("aicmd")
+                    .joinpath("setting_template.json")
+                    .open("r", encoding="utf-8") as f
+                ):
                     config_data = json.load(f)
             except Exception:
                 config_data = self._get_default_json_config()
@@ -520,7 +532,6 @@ class ConfigManager:
         if not validation_result["warnings"] and not validation_result["errors"]:
             print(f"\n✓ Configuration is valid with no issues.")
 
-
     # 设置配置属性 只有当配置有效时（也就是配置文件存在的时候）
     def set_config(self, key, value):
         # 1. 加载JSON配置文件
@@ -557,3 +568,52 @@ class ConfigManager:
                 print(f"Error saving configuration: {e}")
 
         self.config.update(self._flatten_json_config(json_config))
+        return True
+
+    def is_valid_config_key(self, key: str) -> bool:
+        """检查配置键是否有效"""
+        # 检查是否存在于默认配置中（支持嵌套键如 cache.cache_size_limit）
+        if "." in key:
+            keys = key.split(".")
+            current = self.default_config
+            try:
+                for k in keys:
+                    if k not in current and not isinstance(current, dict):
+                        return False
+                    current = current.get(k, {})
+                return True
+            except (TypeError, AttributeError):
+                return False
+        else:
+            return key in self.default_config
+
+    def convert_config_value(self, key: str, value: str):
+        """根据配置键的类型转换值"""
+        try:
+            # 获取默认值以确定类型
+            if "." in key:
+                keys = key.split(".")
+                current = self.default_config
+                for k in keys:
+                    if k not in current:
+                        return None
+                    current = current[k]
+                default_value = current
+            else:
+                default_value = self.default_config.get(key)
+
+            if default_value is None:
+                return None
+
+            # 根据默认值类型转换
+            if isinstance(default_value, bool):
+                return value.lower() in ("true", "1", "yes", "on")
+            elif isinstance(default_value, int):
+                return int(value)
+            elif isinstance(default_value, float):
+                return float(value)
+            else:
+                return value  # 字符串类型保持原样
+
+        except (ValueError, TypeError, KeyError):
+            return None

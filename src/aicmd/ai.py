@@ -27,11 +27,13 @@ Repository: https://github.com/Mikko-ww/ai-cmd
 License: MIT"""
 
 
-def get_shell_command_original(prompt):
+def get_shell_command_original(prompt, base_url=None):
     """原始的获取shell命令函数，用于向后兼容和降级"""
-    
+
     def main_api_operation():
-        api_client = OpenRouterAPIClient(degradation_manager=degradation_manager)
+        api_client = OpenRouterAPIClient(
+            degradation_manager=degradation_manager, base_url=base_url
+        )
         return api_client.send_chat_with_fallback(prompt)
 
     def fallback_operation():
@@ -43,7 +45,14 @@ def get_shell_command_original(prompt):
     )
 
 
-def get_shell_command(prompt, force_api=False, no_clipboard=False, no_color=False):
+def get_shell_command(
+    prompt,
+    force_api=False,
+    no_clipboard=False,
+    no_color=False,
+    json_output=False,
+    base_url=None,
+):
     """增强的获取shell命令函数，集成缓存、置信度判断和用户交互"""
 
     # 初始化配置管理器
@@ -52,19 +61,19 @@ def get_shell_command(prompt, force_api=False, no_clipboard=False, no_color=Fals
     # 检查是否启用交互模式
     if not config.get("interactive_mode", False) or force_api:
         # 交互模式未启用或强制使用API，使用原始功能
-        command = get_shell_command_original(prompt)
+        command = get_shell_command_original(prompt, base_url=base_url)
         if command:
             logger.info(command)
-            
+
             # 安全检查
             safety_checker = CommandSafetyChecker(config)
             safety_info = safety_checker.get_safety_info(command)
-            
+
             # 显示安全警告
             if safety_info["is_dangerous"] and safety_info["warnings"]:
                 for warning in safety_info["warnings"]:
                     print(warning)
-            
+
             # 复制到剪贴板（考虑安全和用户选择）
             if not no_clipboard and not safety_info["disable_auto_copy"]:
                 try:
@@ -86,7 +95,9 @@ def get_shell_command(prompt, force_api=False, no_clipboard=False, no_color=Fals
             config, cache_manager, degradation_manager
         )
         query_matcher = QueryMatcher()
-        interactive_manager = InteractiveManager(config, degradation_manager, no_color=no_color)
+        interactive_manager = InteractiveManager(
+            config, degradation_manager, no_color=no_color
+        )
 
         # 查找精确匹配的缓存
         cached_entry = cache_manager.find_exact_match(prompt)
@@ -110,37 +121,42 @@ def get_shell_command(prompt, force_api=False, no_clipboard=False, no_color=Fals
             interactive_manager.display_metrics(confidence, 0.0)
 
             # 根据置信度决定处理方式
-            auto_copy_threshold = float(
-                config.get("auto_copy_threshold", 0.9) or 0.9
-            )
-            
+            auto_copy_threshold = float(config.get("auto_copy_threshold", 0.9) or 0.9)
+
             # 安全检查（提前进行以影响自动复制决策）
             safety_checker = CommandSafetyChecker(config)
             safety_info = safety_checker.get_safety_info(cached_entry.command or "")
-            
-            if confidence >= auto_copy_threshold and not safety_info["force_confirmation"]:
+
+            if (
+                confidence >= auto_copy_threshold
+                and not safety_info["force_confirmation"]
+            ):
                 # 高置信度且不强制确认：直接使用缓存并自动复制
                 command = cached_entry.command or ""
                 source = "Cache (High Confidence)"
                 if command:
                     logger.info(command)
-                
+
                 # 显示安全警告（如果有）
                 if safety_info["is_dangerous"] and safety_info["warnings"]:
                     print()
                     for warning in safety_info["warnings"]:
                         print(warning)
                     print()
-                
+
                 if not no_clipboard and not safety_info["disable_auto_copy"]:
                     try:
                         pyperclip.copy(command)
-                        interactive_manager.display_success_message(command, copied=True)
+                        interactive_manager.display_success_message(
+                            command, copied=True
+                        )
                     except Exception as e:
                         degradation_manager.logger.warning(
                             f"Failed to copy to clipboard: {e}"
                         )
-                        interactive_manager.display_success_message(command, copied=False)
+                        interactive_manager.display_success_message(
+                            command, copied=False
+                        )
                 else:
                     interactive_manager.display_success_message(command, copied=False)
                     if safety_info["disable_auto_copy"]:
@@ -148,8 +164,9 @@ def get_shell_command(prompt, force_api=False, no_clipboard=False, no_color=Fals
 
                 # 更新使用时间和隐式确认
                 try:
-                    qh = cached_entry.query_hash or cache_manager.db.generate_query_hash(
-                        prompt
+                    qh = (
+                        cached_entry.query_hash
+                        or cache_manager.db.generate_query_hash(prompt)
                     )
                     cache_manager.update_last_used(qh)
                     confidence_calc.update_feedback(qh, command or "", True, 1.0)
@@ -158,9 +175,7 @@ def get_shell_command(prompt, force_api=False, no_clipboard=False, no_color=Fals
 
                 return command
 
-            confidence_threshold = float(
-                config.get("confidence_threshold", 0.8) or 0.8
-            )
+            confidence_threshold = float(config.get("confidence_threshold", 0.8) or 0.8)
             if confidence >= confidence_threshold:
                 # 中等置信度：使用缓存但询问用户确认
                 command = cached_entry.command or ""
@@ -169,7 +184,7 @@ def get_shell_command(prompt, force_api=False, no_clipboard=False, no_color=Fals
             else:
                 # 低置信度：调用API获取新命令
                 interactive_manager.display_info("API 请求中...", color="blue")
-                api_command = get_shell_command_original(prompt)
+                api_command = get_shell_command_original(prompt, base_url=base_url)
                 if not api_command or api_command.startswith("Error:"):
                     # API调用失败，使用缓存作为备选
                     command = cached_entry.command or ""
@@ -220,7 +235,9 @@ def get_shell_command(prompt, force_api=False, no_clipboard=False, no_color=Fals
                         else:
                             # 相似度或置信度不够，调用API
                             if api_command is None:
-                                interactive_manager.display_info("API 请求中...", color="blue")
+                                interactive_manager.display_info(
+                                    "API 请求中...", color="blue"
+                                )
                                 api_command = get_shell_command_original(prompt)
                             command = api_command
                             source = "API"
@@ -228,8 +245,12 @@ def get_shell_command(prompt, force_api=False, no_clipboard=False, no_color=Fals
                         # 相似匹配失败，打印默认指标再请求 API
                         interactive_manager.display_metrics(0.0, 0.0)
                         if api_command is None:
-                            interactive_manager.display_info("API 请求中...", color="blue")
-                            api_command = get_shell_command_original(prompt)
+                            interactive_manager.display_info(
+                                "API 请求中...", color="blue"
+                            )
+                            api_command = get_shell_command_original(
+                                prompt, base_url=base_url
+                            )
                         command = api_command
                         source = "API"
                 else:
@@ -237,7 +258,9 @@ def get_shell_command(prompt, force_api=False, no_clipboard=False, no_color=Fals
                     interactive_manager.display_metrics(0.0, 0.0)
                     if api_command is None:
                         interactive_manager.display_info("API 请求中...", color="blue")
-                        api_command = get_shell_command_original(prompt)
+                        api_command = get_shell_command_original(
+                            prompt, base_url=base_url
+                        )
                     command = api_command
                     source = "API"
             else:
@@ -245,7 +268,7 @@ def get_shell_command(prompt, force_api=False, no_clipboard=False, no_color=Fals
                 interactive_manager.display_metrics(0.0, 0.0)
                 if api_command is None:
                     interactive_manager.display_info("API 请求中...", color="blue")
-                    api_command = get_shell_command_original(prompt)
+                    api_command = get_shell_command_original(prompt, base_url=base_url)
                 command = api_command
                 source = "API"
 
@@ -257,7 +280,7 @@ def get_shell_command(prompt, force_api=False, no_clipboard=False, no_color=Fals
         # 安全检查
         safety_checker = CommandSafetyChecker(config)
         safety_info = safety_checker.get_safety_info(command)
-        
+
         # 显示安全警告
         if safety_info["is_dangerous"] and safety_info["warnings"]:
             print()  # 添加空行提高可读性
@@ -266,9 +289,10 @@ def get_shell_command(prompt, force_api=False, no_clipboard=False, no_color=Fals
             print()  # 添加空行
 
         # 用户交互确认
-        need_confirmation = interactive_manager.should_prompt_for_confirmation(
-            confidence
-        ) or safety_info["force_confirmation"]
+        need_confirmation = (
+            interactive_manager.should_prompt_for_confirmation(confidence)
+            or safety_info["force_confirmation"]
+        )
 
         if need_confirmation:
             # 询问用户确认
@@ -284,12 +308,16 @@ def get_shell_command(prompt, force_api=False, no_clipboard=False, no_color=Fals
                 if not no_clipboard and not safety_info["disable_auto_copy"]:
                     try:
                         pyperclip.copy(command)
-                        interactive_manager.display_success_message(command, copied=True)
+                        interactive_manager.display_success_message(
+                            command, copied=True
+                        )
                     except Exception as e:
                         degradation_manager.logger.warning(
                             f"Failed to copy to clipboard: {e}"
                         )
-                        interactive_manager.display_success_message(command, copied=False)
+                        interactive_manager.display_success_message(
+                            command, copied=False
+                        )
                 else:
                     interactive_manager.display_success_message(command, copied=False)
                     if safety_info["disable_auto_copy"]:
@@ -329,13 +357,45 @@ def get_shell_command(prompt, force_api=False, no_clipboard=False, no_color=Fals
             current_query_hash, command, confirmed, similarity
         )
 
+        # 如果请求JSON输出，返回结构化数据
+        if json_output:
+            import json
+
+            result_data = {
+                "command": command,
+                "source": source,
+                "confidence": confidence,
+                "similarity": similarity if similarity is not None else 0.0,
+                "dangerous": safety_info.get("is_dangerous", False),
+                "confirmed": confirmed,
+            }
+            print(json.dumps(result_data, indent=2, ensure_ascii=False))
+            return result_data
+
         return command
 
     except Exception as e:
         # 任何异常都降级到原始功能
         degradation_manager.logger.error(f"Enhanced shell command error: {e}")
-        print(f"Warning: Enhanced features failed, using basic mode: {e}")
-        return get_shell_command_original(prompt)
+
+        if json_output:
+            import json
+
+            fallback_result = get_shell_command_original(prompt, base_url=base_url)
+            error_data = {
+                "command": fallback_result,
+                "source": "FALLBACK",
+                "confidence": 0.0,
+                "similarity": 0.0,
+                "dangerous": False,
+                "confirmed": False,
+                "warning": "Enhanced features failed, using basic mode",
+            }
+            print(json.dumps(error_data, indent=2, ensure_ascii=False))
+            return error_data
+        else:
+            print(f"Warning: Enhanced features failed, using basic mode: {e}")
+            return get_shell_command_original(prompt, base_url=base_url)
 
 
 def main():
@@ -391,13 +451,13 @@ Examples:
             help="Validate current configuration",
         )
 
-        # # 添加设置配置选项
-        # parser.add_argument(
-        #     "--set-config",
-        #     nargs=2,
-        #     metavar=("KEY", "VALUE"),
-        #     help="Set a configuration key to a specific value (e.g., --set-config interactive_mode true)",
-        # )
+        # 添加设置配置选项
+        parser.add_argument(
+            "--set-config",
+            nargs=2,
+            metavar=("KEY", "VALUE"),
+            help="Set a configuration key to a specific value (e.g., --set-config interactive_mode true)",
+        )
 
         # 添加现有的所有参数
         parser.add_argument(
@@ -412,7 +472,9 @@ Examples:
             help="Disable interactive mode for this request",
         )
         parser.add_argument(
-            "--status", action="store_true", help="Show cache and interaction statistics"
+            "--status",
+            action="store_true",
+            help="Show cache and interaction statistics",
         )
         parser.add_argument(
             "--reset-errors", action="store_true", help="Reset error state"
@@ -422,6 +484,24 @@ Examples:
         )
         parser.add_argument(
             "--no-clipboard", action="store_true", help="Disable clipboard integration"
+        )
+        parser.add_argument(
+            "--recalculate-confidence",
+            action="store_true",
+            help="Recalculate confidence scores for all cached commands",
+        )
+        parser.add_argument(
+            "--json",
+            action="store_true",
+            help="Output results in JSON format with detailed metadata",
+        )
+        parser.add_argument(
+            "--base-url", type=str, help="Override API base URL (useful for proxies)"
+        )
+        parser.add_argument(
+            "--cleanup-cache",
+            action="store_true",
+            help="Clean up expired and oversized cache entries",
         )
 
         # 解析命令行参数
@@ -447,13 +527,10 @@ Examples:
         if args.validate_config:
             validate_configuration()
             return
-        
-        # if args.set_config:
-        #     key, value = args.set_config
-        #     logger.error(f"Setting config: {key} = {value}")
-        #     config = ConfigManager()
-        #     config.set_config(key, value)
-        #     return
+
+        if args.set_config:
+            set_configuration_value(args.set_config[0], args.set_config[1])
+            return
 
         # 处理特殊命令
         if args.reset_errors:
@@ -463,6 +540,14 @@ Examples:
 
         if args.status:
             print_system_status()
+            return
+
+        if args.recalculate_confidence:
+            recalculate_all_confidence_command()
+            return
+
+        if args.cleanup_cache:
+            cleanup_cache_command()
             return
 
         # 检查是否有实际的查询
@@ -478,9 +563,22 @@ Examples:
             force_api = True
 
         # 获取命令
-        command = get_shell_command(prompt, force_api=force_api, no_clipboard=args.no_clipboard, no_color=args.no_color)
+        command = get_shell_command(
+            prompt,
+            force_api=force_api,
+            no_clipboard=args.no_clipboard,
+            no_color=args.no_color,
+            json_output=args.json,
+            base_url=args.base_url,
+        )
         if not command:
-            print("Error: No command generated.")
+            if args.json:
+                import json
+
+                error_data = {"error": "No command generated", "command": None}
+                print(json.dumps(error_data, indent=2, ensure_ascii=False))
+            else:
+                print("Error: No command generated.")
 
     except KeyboardInterrupt:
         print("\n✗ Operation cancelled by user.")
@@ -515,7 +613,7 @@ def create_user_configuration(is_force=False):
 
         if not config_file:
             print("✗ Failed to create user configuration file.")
-        
+
         # if config_file:
         #     print(f"✓ User configuration file created: {config_file}")
         #     print("You can now edit this file to customize your settings.")
@@ -524,6 +622,94 @@ def create_user_configuration(is_force=False):
         #     print("✗ Failed to create user configuration file.")
     except Exception as e:
         print(f"Error creating user configuration: {e}")
+
+
+def set_configuration_value(key: str, value: str):
+    """设置配置值"""
+    try:
+        config = ConfigManager()
+
+        # 验证配置键是否存在于默认配置中
+        if not config.is_valid_config_key(key):
+            print(f"✗ Invalid configuration key: {key}")
+            print("Run 'aicmd --show-config' to see available configuration keys.")
+            return
+
+        # 转换值类型
+        converted_value = config.convert_config_value(key, value)
+        if converted_value is None:
+            print(f"✗ Invalid value '{value}' for key '{key}'")
+            return
+
+        # 设置配置值
+        success = config.set_config(key, converted_value)
+        if success:
+            print(f"✓ Configuration updated: {key} = {converted_value}")
+            print("Changes will take effect on next run.")
+        else:
+            print(f"✗ Failed to update configuration for key: {key}")
+
+    except Exception as e:
+        degradation_manager.logger.error(f"Set config failed: {e}")
+        print(f"✗ Failed to set configuration: {e}")
+
+
+def cleanup_cache_command():
+    """执行缓存清理命令"""
+    try:
+        from .database_manager import SafeDatabaseManager
+        from .config_manager import ConfigManager
+
+        print("=== Cleaning Up Cache ===")
+
+        config = ConfigManager()
+        db_manager = SafeDatabaseManager(config_manager=config)
+
+        if not db_manager.is_available:
+            print("✗ Database not available for cleanup")
+            return
+
+        deleted_count = db_manager.cleanup_old_entries()
+
+        if deleted_count > 0:
+            print(f"✓ Cache cleanup completed. Removed {deleted_count} entries.")
+        else:
+            print("ℹ No entries needed cleanup")
+
+    except Exception as e:
+        degradation_manager.logger.error(f"Cache cleanup failed: {e}")
+        print(f"✗ Failed to clean up cache: {e}")
+
+
+def recalculate_all_confidence_command():
+    """执行批量置信度重算命令"""
+    try:
+        from .cache_manager import CacheManager
+        from .confidence_calculator import ConfidenceCalculator
+        from .config_manager import ConfigManager
+
+        print("=== Recalculating Confidence Scores ===")
+
+        config = ConfigManager()
+        cache_manager = CacheManager(
+            config_manager=config, degradation_manager=degradation_manager
+        )
+        confidence_calc = ConfidenceCalculator(
+            config_manager=config,
+            cache_manager=cache_manager,
+            degradation_manager=degradation_manager,
+        )
+
+        updated_count = confidence_calc.recalculate_all_confidence()
+
+        if updated_count > 0:
+            print(f"✓ Successfully recalculated confidence for {updated_count} entries")
+        else:
+            print("ℹ No entries found to recalculate")
+
+    except Exception as e:
+        degradation_manager.logger.error(f"Confidence recalculation failed: {e}")
+        print(f"✗ Failed to recalculate confidence scores: {e}")
 
 
 def validate_configuration():
@@ -636,7 +822,9 @@ def print_system_status():
         # 置信度统计
         try:
             cache_manager = CacheManager(config, degradation_manager)
-            confidence_calc = ConfidenceCalculator(config, cache_manager, degradation_manager)
+            confidence_calc = ConfidenceCalculator(
+                config, cache_manager, degradation_manager
+            )
             conf_stats = confidence_calc.get_confidence_stats()
             if conf_stats.get("status") == "available":
                 print(f"\nConfidence Statistics:")

@@ -234,43 +234,74 @@ class SafeDatabaseManager:
                 return None
 
     def generate_query_hash(self, query):
-        """统一调用哈希工具，确保一致性"""
-        return hash_query(query)
+        """统一调用哈希工具，确保一致性，支持配置的哈希策略"""
+        hash_strategy = self.config.get("hash_strategy", "simple")
+        return hash_query(query, strategy=hash_strategy)
 
     def cleanup_old_entries(self):
-        """清理过期的缓存条目（基于配置的限制）"""
+        """清理过期的缓存条目（基于配置的限制和TTL）"""
         if not self.is_available:
-            return
+            return 0
+
+        total_deleted = 0
 
         try:
-            cache_limit = self.config.get("cache_size_limit", 1000)
-
-            # 获取当前缓存条目数
-            result = self.execute_query(
-                "SELECT COUNT(*) FROM enhanced_cache", fetch=True
-            )
-
-            if result and isinstance(result, list) and len(result) > 0:
-                count = result[0][0]
-                if count > cache_limit:
-                    # 删除最老的条目
-                    delete_count = count - cache_limit + 100  # 多删除一些以避免频繁清理
-                    self.execute_query(
-                        """
-                        DELETE FROM enhanced_cache 
-                        WHERE id IN (
-                            SELECT id FROM enhanced_cache 
-                            ORDER BY last_used ASC 
-                            LIMIT ?
-                        )
+            # 1. 先清理基于时间的TTL过期条目
+            max_age_days = self.config.get("max_cache_age_days", 30)
+            if max_age_days > 0:
+                ttl_result = self.execute_query(
+                    """
+                    DELETE FROM enhanced_cache 
+                    WHERE created_at < datetime('now', '-' || ? || ' days')
                     """,
-                        (delete_count,),
-                    )
+                    (max_age_days,),
+                )
 
-                    print(f"Cleaned up {delete_count} old cache entries")
+                if ttl_result and isinstance(ttl_result, int):
+                    total_deleted += ttl_result
+                    if ttl_result > 0:
+                        print(
+                            f"Cleaned up {ttl_result} expired cache entries (older than {max_age_days} days)"
+                        )
+
+            # 2. 然后清理基于大小限制的条目
+            cache_limit = self.config.get("cache_size_limit", 1000)
+            if cache_limit > 0:
+                # 获取当前缓存条目数
+                result = self.execute_query(
+                    "SELECT COUNT(*) FROM enhanced_cache", fetch=True
+                )
+
+                if result and isinstance(result, list) and len(result) > 0:
+                    count = result[0][0]
+                    if count > cache_limit:
+                        # 删除最老的条目
+                        delete_count = (
+                            count - cache_limit + 100
+                        )  # 多删除一些以避免频繁清理
+                        size_result = self.execute_query(
+                            """
+                            DELETE FROM enhanced_cache 
+                            WHERE id IN (
+                                SELECT id FROM enhanced_cache 
+                                ORDER BY last_used ASC 
+                                LIMIT ?
+                            )
+                        """,
+                            (delete_count,),
+                        )
+
+                        if size_result and isinstance(size_result, int):
+                            total_deleted += size_result
+                            if size_result > 0:
+                                print(
+                                    f"Cleaned up {size_result} old cache entries (size limit: {cache_limit})"
+                                )
 
         except Exception as e:
             print(f"Warning: Cache cleanup failed: {e}")
+
+        return total_deleted
 
     def get_database_stats(self):
         """获取数据库统计信息"""
