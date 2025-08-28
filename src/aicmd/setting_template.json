@@ -10,7 +10,40 @@
   "api": {
     "use_backup_model": false,
     "timeout_seconds": 30,
-    "max_retries": 3
+    "max_retries": 3,
+    "default_provider": ""
+  },
+  "providers": {
+    "openrouter": {
+      "api_key": "",
+      "model": "",
+      "base_url": "https://openrouter.ai/api/v1/chat/completions"
+    },
+    "openai": {
+      "api_key": "",
+      "model": "gpt-3.5-turbo",
+      "base_url": "https://api.openai.com/v1/chat/completions"
+    },
+    "deepseek": {
+      "api_key": "",
+      "model": "deepseek-chat",
+      "base_url": "https://api.deepseek.com/v1/chat/completions"
+    },
+    "xai": {
+      "api_key": "",
+      "model": "grok-beta",
+      "base_url": "https://api.x.ai/v1/chat/completions"
+    },
+    "gemini": {
+      "api_key": "",
+      "model": "gemini-pro",
+      "base_url": "https://generativelanguage.googleapis.com/v1beta/models"
+    },
+    "qwen": {
+      "api_key": "",
+      "model": "qwen-turbo",
+      "base_url": "https://dashscope.aliyuncs.com/api/v1/services/aigc/text-generation/generation"
+    }
   },
   "cache": {
     "cache_directory": "~/.ai-cmd",

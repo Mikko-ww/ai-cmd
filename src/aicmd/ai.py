@@ -9,7 +9,7 @@ from .cache_manager import CacheManager
 from .confidence_calculator import ConfidenceCalculator
 from .query_matcher import QueryMatcher
 from .interactive_manager import InteractiveManager, ConfirmationResult
-from .api_client import OpenRouterAPIClient
+from .multi_provider_api_client import MultiProviderAPIClient
 from .safety_checker import CommandSafetyChecker
 from .logger import logger
 
@@ -31,7 +31,7 @@ def get_shell_command_original(prompt, base_url=None):
     """原始的获取shell命令函数，用于向后兼容和降级"""
 
     def main_api_operation():
-        api_client = OpenRouterAPIClient(
+        api_client = MultiProviderAPIClient(
             degradation_manager=degradation_manager, base_url=base_url
         )
         return api_client.send_chat_with_fallback(prompt)
@@ -503,6 +503,19 @@ Examples:
             action="store_true",
             help="Clean up expired and oversized cache entries",
         )
+        
+        # Provider management options
+        parser.add_argument(
+            "--list-providers",
+            action="store_true",
+            help="List all supported LLM providers",
+        )
+        
+        parser.add_argument(
+            "--test-provider",
+            type=str,
+            help="Test configuration for a specific provider",
+        )
 
         # 解析命令行参数
         args = parser.parse_args()
@@ -548,6 +561,14 @@ Examples:
 
         if args.cleanup_cache:
             cleanup_cache_command()
+            return
+
+        if args.list_providers:
+            list_providers_command()
+            return
+            
+        if args.test_provider:
+            test_provider_command(args.test_provider)
             return
 
         # 检查是否有实际的查询
@@ -879,6 +900,88 @@ def print_system_status():
 
     except Exception as e:
         print(f"Error displaying statistics: {e}")
+
+
+def list_providers_command():
+    """列出所有支持的LLM提供商"""
+    try:
+        from .llm_router import LLMRouter
+        
+        router = LLMRouter()
+        providers = router.list_providers()
+        current_provider = router.get_current_provider()
+        
+        print("=== Supported LLM Providers ===")
+        print(f"Current default provider: {current_provider}")
+        print("\nAvailable providers:")
+        
+        for provider in providers:
+            marker = " (current)" if provider == current_provider else ""
+            print(f"  • {provider}{marker}")
+        
+        print(f"\nTotal: {len(providers)} providers supported")
+        print("\nTo set a provider as default, use:")
+        print("  aicmd --set-config default_provider <provider_name>")
+        print("\nTo test a provider configuration, use:")
+        print("  aicmd --test-provider <provider_name>")
+        
+    except Exception as e:
+        print(f"Error listing providers: {e}")
+
+
+def test_provider_command(provider_name: str):
+    """测试指定提供商的配置"""
+    try:
+        from .llm_router import LLMRouter
+        
+        router = LLMRouter()
+        supported_providers = router.list_providers()
+        
+        if provider_name not in supported_providers:
+            print(f"✗ Unknown provider: {provider_name}")
+            print(f"Supported providers: {', '.join(supported_providers)}")
+            return
+            
+        print(f"=== Testing Provider: {provider_name} ===")
+        
+        validation_result = router.validate_provider_config(provider_name)
+        
+        if validation_result["valid"]:
+            print("✓ Provider configuration is valid")
+            config = validation_result["config"]
+            print(f"  API Key: {config['api_key']}")
+            print(f"  Model: {config['model']}")
+            print(f"  Base URL: {config['base_url']}")
+            
+            # Try a simple test request
+            print("\nTesting API connection...")
+            try:
+                result = router.send_chat("echo hello", provider_name=provider_name)
+                if result and not result.startswith("Error:"):
+                    print("✓ API connection successful")
+                    print(f"Response: {result[:50]}{'...' if len(result) > 50 else ''}")
+                else:
+                    print(f"✗ API test failed: {result}")
+            except Exception as api_e:
+                print(f"✗ API test failed: {api_e}")
+                
+        else:
+            print("✗ Provider configuration is invalid")
+            if "error" in validation_result:
+                print(f"Error: {validation_result['error']}")
+            if "issues" in validation_result:
+                print("Issues:")
+                for issue in validation_result["issues"]:
+                    print(f"  • {issue}")
+        
+        print(f"\nTo configure {provider_name}, you can:")
+        print(f"  1. Set environment variables:")
+        print(f"     export AI_CMD_{provider_name.upper()}_API_KEY=<your_key>")
+        print(f"     export AI_CMD_{provider_name.upper()}_MODEL=<model_name>")
+        print(f"  2. Or edit your config file and set providers.{provider_name}.* values")
+        
+    except Exception as e:
+        print(f"Error testing provider: {e}")
 
 
 if __name__ == "__main__":
