@@ -26,6 +26,9 @@ class ConfigManager:
             # API配置
             "api_timeout_seconds": 30,
             "max_retries": 3,
+            "default_provider": "",
+            # 提供商配置
+            "providers": {},
             # 缓存配置
             "cache_directory": "~/.ai-cmd",
             "database_file": "cache.db",
@@ -118,8 +121,13 @@ class ConfigManager:
                     "use_backup_model": api.get("use_backup_model", False),
                     "api_timeout_seconds": api.get("timeout_seconds"),
                     "max_retries": api.get("max_retries"),
+                    "default_provider": api.get("default_provider", ""),
                 }
             )
+
+        if "providers" in json_config:
+            providers = json_config["providers"]
+            flattened["providers"] = providers
 
         if "cache" in json_config:
             cache = json_config["cache"]
@@ -181,6 +189,7 @@ class ConfigManager:
             "AI_CMD_CACHE_ENABLED": ("cache_enabled", self._get_bool),
             "AI_CMD_CACHE_SIZE_LIMIT": ("cache_size_limit", self._get_int),
             "AI_CMD_CACHE_DIR": ("cache_dir", self._get_string),
+            "AI_CMD_DEFAULT_PROVIDER": ("default_provider", self._get_string),
         }
 
         for env_key, (config_key, converter) in env_mappings.items():
@@ -205,6 +214,7 @@ class ConfigManager:
             "confidence_threshold": "AI_CMD_CONFIDENCE_THRESHOLD",
             "auto_copy_threshold": "AI_CMD_AUTO_COPY_THRESHOLD",
             "cache_enabled": "AI_CMD_CACHE_ENABLED",
+            "default_provider": "AI_CMD_DEFAULT_PROVIDER",
         }
 
         # 检查环境变量
@@ -263,7 +273,44 @@ class ConfigManager:
                 "auto_copy_threshold": 0.9,
                 "manual_confirmation_threshold": 0.8,
             },
-            "api": {"timeout_seconds": 30, "max_retries": 3, "use_backup_model": False},
+            "api": {
+                "timeout_seconds": 30, 
+                "max_retries": 3, 
+                "use_backup_model": False,
+                "default_provider": ""
+            },
+            "providers": {
+                "openrouter": {
+                    "api_key": "",
+                    "model": "",
+                    "base_url": "https://openrouter.ai/api/v1/chat/completions"
+                },
+                "openai": {
+                    "api_key": "",
+                    "model": "gpt-3.5-turbo",
+                    "base_url": "https://api.openai.com/v1/chat/completions"
+                },
+                "deepseek": {
+                    "api_key": "",
+                    "model": "deepseek-chat",
+                    "base_url": "https://api.deepseek.com/v1/chat/completions"
+                },
+                "xai": {
+                    "api_key": "",
+                    "model": "grok-beta",
+                    "base_url": "https://api.x.ai/v1/chat/completions"
+                },
+                "gemini": {
+                    "api_key": "",
+                    "model": "gemini-pro",
+                    "base_url": "https://generativelanguage.googleapis.com/v1beta/models"
+                },
+                "qwen": {
+                    "api_key": "",
+                    "model": "qwen-turbo",
+                    "base_url": "https://dashscope.aliyuncs.com/api/v1/services/aigc/text-generation/generation"
+                }
+            },
             "cache": {
                 "cache_directory": "~/.ai-cmd",
                 "database_file": "cache.db",
@@ -482,7 +529,7 @@ class ConfigManager:
                 "auto_copy_threshold",
                 "manual_confirmation_threshold",
             ],
-            "API Configuration": ["api_timeout_seconds", "max_retries"],
+            "API Configuration": ["api_timeout_seconds", "max_retries", "default_provider"],
             "Cache Configuration": [
                 "cache_directory",
                 "database_file",
@@ -509,6 +556,34 @@ class ConfigManager:
                 value = self.get(key)
                 source = self.get_config_source(key)
                 print(f"  {key}: {value} ({source})")
+
+        # 显示提供商配置
+        providers = self.get("providers", {})
+        if providers:
+            print(f"\nProvider Configurations:")
+            for provider_name, provider_config in providers.items():
+                print(f"  {provider_name}:")
+                
+                # 检查API密钥，首先从配置，然后从环境变量
+                config_api_key = provider_config.get("api_key", "")
+                env_api_key_var = f"AI_CMD_{provider_name.upper()}_API_KEY"
+                env_api_key = os.getenv(env_api_key_var, "")
+                api_key = config_api_key or env_api_key
+                
+                # 检查模型，首先从配置，然后从环境变量
+                config_model = provider_config.get("model", "")
+                env_model_var = f"AI_CMD_{provider_name.upper()}_MODEL"
+                env_model = os.getenv(env_model_var, "")
+                model = config_model or env_model
+                
+                base_url = provider_config.get("base_url", "")
+                
+                api_key_source = "Config" if config_api_key else ("Environment" if env_api_key else "Not set")
+                model_source = "Config" if config_model else ("Environment" if env_model else "Not set")
+                
+                print(f"    api_key: {'***' if api_key else 'Not set'} ({api_key_source})")
+                print(f"    model: {model or 'Not set'} ({model_source})")
+                print(f"    base_url: {base_url or 'Not set'}")
 
         # 显示配置文件路径
         config_path = self._get_config_file_path()

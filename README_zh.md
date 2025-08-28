@@ -39,6 +39,7 @@
 - 关闭剪贴板/颜色：`--no-clipboard`、`--no-color`
 - 状态与维护：`--status`、`--reset-errors`、`--cleanup-cache`、`--recalculate-confidence`
 - 配置相关：`--config`、`--show-config`、`--create-config`、`--create-config-force`、`--validate-config`、`--set-config KEY VALUE`
+- 提供商管理：`--list-providers`、`--test-provider <名称>`
 - 网络代理：`--base-url https://proxy.example/api/v1/chat/completions`
 
 配置说明
@@ -68,7 +69,7 @@
     "auto_copy_threshold": 1.0,
     "manual_confirmation_threshold": 0.7
   },
-  "api": { "use_backup_model": false, "timeout_seconds": 30, "max_retries": 3 },
+  "api": { "use_backup_model": false, "timeout_seconds": 30, "max_retries": 3, "default_provider": "openai" },
   "cache": { "cache_directory": "~/.ai-cmd", "database_file": "cache.db", "max_cache_age_days": 30, "cache_size_limit": 1000 },
   "interaction": { "interaction_timeout_seconds": 30, "positive_weight": 0.3, "negative_weight": 0.6, "similarity_threshold": 0.6, "confidence_threshold": 0.75 },
   "display": { "show_confidence": false, "show_source": false, "colored_output": true }
@@ -94,9 +95,21 @@
   - 使用 `--json` 输出：`{ command, source, confidence, similarity, dangerous, confirmed }`
 
 环境变量
-- 必需：`AI_CMD_OPENROUTER_API_KEY`
-- 可选：`AI_CMD_OPENROUTER_MODEL`、`AI_CMD_OPENROUTER_MODEL_BACKUP`
+- **多 LLM 提供商支持**：支持 OpenRouter、OpenAI、DeepSeek、xAI、Gemini、Qwen
+  - 默认提供商：`AI_CMD_DEFAULT_PROVIDER`（可选，默认为 `openrouter`）
+  - OpenRouter：`AI_CMD_OPENROUTER_API_KEY`、`AI_CMD_OPENROUTER_MODEL`、`AI_CMD_OPENROUTER_MODEL_BACKUP`
+  - OpenAI：`AI_CMD_OPENAI_API_KEY`、`AI_CMD_OPENAI_MODEL`（默认 `gpt-3.5-turbo`）
+  - DeepSeek：`AI_CMD_DEEPSEEK_API_KEY`、`AI_CMD_DEEPSEEK_MODEL`（默认 `deepseek-chat`）
+  - xAI：`AI_CMD_XAI_API_KEY`、`AI_CMD_XAI_MODEL`（默认 `grok-beta`）
+  - Gemini：`AI_CMD_GEMINI_API_KEY`、`AI_CMD_GEMINI_MODEL`（默认 `gemini-pro`）
+  - Qwen：`AI_CMD_QWEN_API_KEY`、`AI_CMD_QWEN_MODEL`（默认 `qwen-turbo`）
 - 可选调参（覆盖部分配置）：`AI_CMD_INTERACTIVE_MODE`、`AI_CMD_CONFIDENCE_THRESHOLD`、`AI_CMD_AUTO_COPY_THRESHOLD`、`AI_CMD_POSITIVE_WEIGHT`、`AI_CMD_NEGATIVE_WEIGHT`、`AI_CMD_SIMILARITY_THRESHOLD`、`AI_CMD_CACHE_ENABLED`、`AI_CMD_CACHE_SIZE_LIMIT`、`AI_CMD_CACHE_DIR`
+
+LLM 提供商管理
+- 列出支持的提供商：`aicmd --list-providers`
+- 测试提供商配置：`aicmd --test-provider <提供商名称>`
+- 设置默认提供商：`aicmd --set-config default_provider <提供商名称>`
+- 向后兼容：未设置提供商时自动使用 OpenRouter
 
 问题排查
 - “找不到 API key”：设置 `AI_CMD_OPENROUTER_API_KEY`
