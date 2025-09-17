@@ -50,6 +50,10 @@ class ConfigManager:
             "cache_dir": None,
         }
 
+        # 预加载默认 JSON 结构，用于键路径解析与类型推断
+        self.default_json_structure = self._get_default_json_config()
+        self._simple_key_paths = self._build_simple_key_paths(self.default_json_structure)
+
         # 加载配置
         self.config = self._load_configuration()
 
@@ -331,6 +335,30 @@ class ConfigManager:
             },
         }
 
+    def _build_simple_key_paths(self, data):
+        """为扁平键生成默认 JSON 路径映射，忽略重复键"""
+        mapping = {}
+        duplicates = set()
+
+        def helper(node, path):
+            if not isinstance(node, dict):
+                return
+            for key, value in node.items():
+                new_path = path + (key,)
+                if isinstance(value, dict):
+                    helper(value, new_path)
+                else:
+                    existing_path = mapping.get(key)
+                    if existing_path and existing_path != new_path:
+                        duplicates.add(key)
+                    else:
+                        mapping[key] = new_path
+
+        helper(data, tuple())
+        for key in duplicates:
+            mapping.pop(key, None)
+        return mapping
+
     def _get_bool(self, key, default):
         """安全地从环境变量读取布尔值"""
         try:
@@ -608,87 +636,125 @@ class ConfigManager:
             print(f"\n✓ Configuration is valid with no issues.")
 
     # 设置配置属性 只有当配置有效时（也就是配置文件存在的时候）
+    def _get_nested_value(self, data, key):
+        if not data or "." not in key:
+            return None
+        current = data
+        for part in key.split("."):
+            if not isinstance(current, dict) or part not in current:
+                return None
+            current = current[part]
+        return current
+
+    def _ensure_path_container(self, data, path_parts):
+        current = data
+        for part in path_parts[:-1]:
+            next_item = current.get(part)
+            if next_item is None:
+                next_item = {}
+                current[part] = next_item
+            elif not isinstance(next_item, dict):
+                return None
+            current = next_item
+        return current
+
+    def _path_exists(self, data, path_parts):
+        current = data
+        for part in path_parts:
+            if not isinstance(current, dict) or part not in current:
+                return False
+            current = current[part]
+        return True
+
     def set_config(self, key, value):
-        # 1. 加载JSON配置文件
-        json_config = self._load_json_config()
-        if not json_config:
-            logger.error("Failed to load JSON config.")
-        if not self.config:
-            logger.error(f"Warning: Configuration is not loaded.")
-            return
-        # 如果key是嵌套属性，分割成多个层级
-        if "." in key:
-            keys = key.split(".")
-            current = json_config
-            for k in keys[:-1]:
-                print(f"Setting key: {k}")
-                if k not in current:
-                    print(f"Warning: Invalid configuration key: {key}")
-                    return
-                current = current[k]
-            key = keys[-1]
-        else:
-            current = json_config
-
-        current[key] = value
-
-        # 保存到JSON配置文件
         config_path = self._get_config_file_path()
-        if config_path:
-            try:
-                with open(config_path, "w", encoding="utf-8") as f:
-                    json.dump(json_config, f, indent=2, ensure_ascii=False)
-                print(f"✓ Configuration updated: {key} = {value}")
-            except Exception as e:
-                print(f"Error saving configuration: {e}")
+        if not config_path:
+            logger.error("No configuration file found. Create one with --create-config first.")
+            return False
+
+        json_config = self._load_json_config() or {}
+        path_parts = []
+        if "." in key:
+            path_parts = key.split(".")
+        else:
+            path_parts = list(self._simple_key_paths.get(key, (key,)))
+
+        if not path_parts:
+            logger.error(f"Invalid configuration key: {key}")
+            return False
+
+        container = self._ensure_path_container(json_config, path_parts)
+        if container is None:
+            logger.error(f"Invalid configuration path for key: {key}")
+            return False
+
+        container[path_parts[-1]] = value
+
+        try:
+            with open(config_path, "w", encoding="utf-8") as f:
+                json.dump(json_config, f, indent=2, ensure_ascii=False)
+            print(f"✓ Configuration updated: {key} = {value}")
+        except Exception as e:
+            print(f"Error saving configuration: {e}")
+            return False
 
         self.config.update(self._flatten_json_config(json_config))
         return True
 
     def is_valid_config_key(self, key: str) -> bool:
         """检查配置键是否有效"""
-        # 检查是否存在于默认配置中（支持嵌套键如 cache.cache_size_limit）
-        if "." in key:
-            keys = key.split(".")
-            current = self.default_config
-            try:
-                for k in keys:
-                    if k not in current and not isinstance(current, dict):
-                        return False
-                    current = current.get(k, {})
-                return True
-            except (TypeError, AttributeError):
-                return False
-        else:
+        if not key:
+            return False
+
+        if "." not in key:
             return key in self.default_config
+
+        path_parts = key.split(".")
+
+        current_config = self._load_json_config()
+        if current_config and self._path_exists(current_config, path_parts):
+            return True
+
+        if self._path_exists(self.default_json_structure, path_parts):
+            return True
+
+        # providers.* 允许通过 CLI 扩展新提供商
+        if path_parts[0] == "providers" and len(path_parts) >= 2:
+            return True
+
+        return False
 
     def convert_config_value(self, key: str, value: str):
         """根据配置键的类型转换值"""
         try:
-            # 获取默认值以确定类型
+            expected_value = None
+            expected_type = None
+
             if "." in key:
-                keys = key.split(".")
-                current = self.default_config
-                for k in keys:
-                    if k not in current:
-                        return None
-                    current = current[k]
-                default_value = current
+                json_config = self._load_json_config() or {}
+                expected_value = self._get_nested_value(json_config, key)
+                if expected_value is None:
+                    expected_value = self._get_nested_value(self.default_json_structure, key)
             else:
-                default_value = self.default_config.get(key)
+                expected_value = self.default_config.get(key)
 
-            if default_value is None:
-                return None
+            if expected_value is not None:
+                expected_type = type(expected_value)
+            elif key.startswith("providers."):
+                expected_type = str
+            else:
+                expected_type = None
 
-            # 根据默认值类型转换
-            if isinstance(default_value, bool):
+            if expected_type is bool:
                 return value.lower() in ("true", "1", "yes", "on")
-            elif isinstance(default_value, int):
+            if expected_type is int:
                 return int(value)
-            elif isinstance(default_value, float):
+            if expected_type is float:
                 return float(value)
-            else:
-                return value  # 字符串类型保持原样
+            if expected_type is str or expected_type is None:
+                return value
+
+            return None
 
         except (ValueError, TypeError, KeyError):
             return None
