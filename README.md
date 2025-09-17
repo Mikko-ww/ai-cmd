@@ -62,7 +62,7 @@ Configuration
 - Sample config (abbreviated)
 ```
 {
-  "version": "0.4.0",
+  "version": "0.4.1",
   "basic": {
     "interactive_mode": true,
     "cache_enabled": true,
