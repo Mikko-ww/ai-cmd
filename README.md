@@ -3,7 +3,7 @@ AI Command (aicmd)
 
 A smart CLI that converts natural language into shell commands with caching, safety checks, and interactive confirmation — powered by OpenRouter.
 
-Why you’ll like it
+Why you'll like it
 - Natural language to shell commands (no extra prose)
 - Smart cache with confidence learning and time-decay
 - Interactive confirmation with safety warnings and clipboard copy
@@ -20,8 +20,9 @@ Quick start
 
 2) Configure your API key (required)
 
-- `export AI_CMD_OPENROUTER_API_KEY=sk-...`
-- Optional models: `AI_CMD_OPENROUTER_MODEL`, `AI_CMD_OPENROUTER_MODEL_BACKUP`
+- Create config file: `aicmd --create-config`
+- Edit `~/.ai-cmd/settings.json` and add your API key to the provider configuration
+- Example: Set `providers.openrouter.api_key` to your OpenRouter API key
 
 3) Run a prompt
 
@@ -46,7 +47,6 @@ Configuration
 - Locations (highest priority last-write wins)
   - User config: `~/.ai-cmd/settings.json`
   - Project config: `./.ai-cmd.json`
-  - Environment variables (override specific keys)
   - Built-in defaults
 
 - Create a starter config
@@ -62,7 +62,7 @@ Configuration
 - Sample config (abbreviated)
 ```
 {
-  "version": "0.4.1",
+  "version": "1.0.0",
   "basic": {
     "interactive_mode": true,
     "cache_enabled": true,
@@ -94,15 +94,10 @@ Behavior and workflow
 - JSON output
   - `--json` prints: `{ command, source, confidence, similarity, dangerous, confirmed }`
 
-Environment variables
-- Required: `AI_CMD_OPENROUTER_API_KEY`
-- Optional: `AI_CMD_OPENROUTER_MODEL`, `AI_CMD_OPENROUTER_MODEL_BACKUP`
-- Optional tuning (overrides some config): `AI_CMD_INTERACTIVE_MODE`, `AI_CMD_CONFIDENCE_THRESHOLD`, `AI_CMD_AUTO_COPY_THRESHOLD`, `AI_CMD_POSITIVE_WEIGHT`, `AI_CMD_NEGATIVE_WEIGHT`, `AI_CMD_SIMILARITY_THRESHOLD`, `AI_CMD_CACHE_ENABLED`, `AI_CMD_CACHE_SIZE_LIMIT`, `AI_CMD_CACHE_DIR`
-
 Troubleshooting
-- “API key not found”: set `AI_CMD_OPENROUTER_API_KEY`
-- “No model specified”: set `AI_CMD_OPENROUTER_MODEL` or enable backup via config
-- “Rate limit exceeded”: the client retries; try again or set a backup model
+- "API key not found": create config with `aicmd --create-config` and set your provider API key in `~/.ai-cmd/settings.json`
+- "No model specified": set the model in your provider configuration or enable backup via config
+- "Rate limit exceeded": the client retries; try again or set a backup model
 - Cache disabled due to errors: run `aicmd --reset-errors`, check `~/.ai-cmd/logs/`
 
 Development
@@ -113,4 +108,3 @@ Development
 
 License
 - MIT. See repository for details.
-

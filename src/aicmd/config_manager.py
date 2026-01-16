@@ -52,23 +52,21 @@ class ConfigManager:
 
         # 预加载默认 JSON 结构，用于键路径解析与类型推断
         self.default_json_structure = self._get_default_json_config()
-        self._simple_key_paths = self._build_simple_key_paths(self.default_json_structure)
+        self._simple_key_paths = self._build_simple_key_paths(
+            self.default_json_structure
+        )
 
         # 加载配置
         self.config = self._load_configuration()
 
     def _load_configuration(self):
-        """加载配置，按优先级合并：环境变量 > JSON文件 > 默认配置"""
+        """加载配置，按优先级合并：JSON文件 > 默认配置"""
         config = self.default_config.copy()
 
-        # 1. 加载JSON配置文件
+        # 加载JSON配置文件
         json_config = self._load_json_config()
         if json_config:
             config.update(self._flatten_json_config(json_config))
-
-        # 2. 加载环境变量配置（最高优先级）
-        env_config = self._load_env_config()
-        config.update(env_config)
 
         return config
 
@@ -178,31 +176,6 @@ class ConfigManager:
 
         return flattened_filtered
 
-    def _load_env_config(self):
-        """从环境变量加载配置（保持向后兼容性）"""
-        env_config = {}
-
-        # 映射环境变量到配置键
-        env_mappings = {
-            "AI_CMD_INTERACTIVE_MODE": ("interactive_mode", self._get_bool),
-            "AI_CMD_CONFIDENCE_THRESHOLD": ("confidence_threshold", self._get_float),
-            "AI_CMD_AUTO_COPY_THRESHOLD": ("auto_copy_threshold", self._get_float),
-            "AI_CMD_POSITIVE_WEIGHT": ("positive_weight", self._get_float),
-            "AI_CMD_NEGATIVE_WEIGHT": ("negative_weight", self._get_float),
-            "AI_CMD_SIMILARITY_THRESHOLD": ("similarity_threshold", self._get_float),
-            "AI_CMD_CACHE_ENABLED": ("cache_enabled", self._get_bool),
-            "AI_CMD_CACHE_SIZE_LIMIT": ("cache_size_limit", self._get_int),
-            "AI_CMD_CACHE_DIR": ("cache_dir", self._get_string),
-            "AI_CMD_DEFAULT_PROVIDER": ("default_provider", self._get_string),
-        }
-
-        for env_key, (config_key, converter) in env_mappings.items():
-            value = converter(env_key, None)
-            if value is not None:
-                env_config[config_key] = value
-
-        return env_config
-
     def get(self, key, default=None):
         """获取配置项的值"""
         return self.config.get(key, default)
@@ -213,19 +186,6 @@ class ConfigManager:
 
     def get_config_source(self, key):
         """获取配置项的来源"""
-        env_mappings = {
-            "interactive_mode": "AI_CMD_INTERACTIVE_MODE",
-            "confidence_threshold": "AI_CMD_CONFIDENCE_THRESHOLD",
-            "auto_copy_threshold": "AI_CMD_AUTO_COPY_THRESHOLD",
-            "cache_enabled": "AI_CMD_CACHE_ENABLED",
-            "default_provider": "AI_CMD_DEFAULT_PROVIDER",
-        }
-
-        # 检查环境变量
-        env_key = env_mappings.get(key)
-        if env_key and os.getenv(env_key):
-            return "Environment Variable"
-
         # 检查JSON配置文件
         config_path = self._get_config_file_path()
         if config_path:
@@ -269,8 +229,9 @@ class ConfigManager:
     def _get_default_json_config(self):
         """获取默认JSON配置结构"""
         return {
-            "version": "0.4.1",
+            "version": "1.0.0",
             "description": "AI Command Line Tool Configuration",
+            "_note": "API keys are now stored securely in system keyring. Use 'aicmd --set-api-key <provider> <key>' to configure.",
             "basic": {
                 "interactive_mode": False,
                 "cache_enabled": True,
@@ -278,42 +239,36 @@ class ConfigManager:
                 "manual_confirmation_threshold": 0.8,
             },
             "api": {
-                "timeout_seconds": 30, 
-                "max_retries": 3, 
+                "timeout_seconds": 30,
+                "max_retries": 3,
                 "use_backup_model": False,
-                "default_provider": ""
+                "default_provider": "",
             },
             "providers": {
                 "openrouter": {
-                    "api_key": "",
                     "model": "",
-                    "base_url": "https://openrouter.ai/api/v1/chat/completions"
+                    "base_url": "https://openrouter.ai/api/v1/chat/completions",
                 },
                 "openai": {
-                    "api_key": "",
                     "model": "gpt-3.5-turbo",
-                    "base_url": "https://api.openai.com/v1/chat/completions"
+                    "base_url": "https://api.openai.com/v1/chat/completions",
                 },
                 "deepseek": {
-                    "api_key": "",
                     "model": "deepseek-chat",
-                    "base_url": "https://api.deepseek.com/v1/chat/completions"
+                    "base_url": "https://api.deepseek.com/v1/chat/completions",
                 },
                 "xai": {
-                    "api_key": "",
                     "model": "grok-beta",
-                    "base_url": "https://api.x.ai/v1/chat/completions"
+                    "base_url": "https://api.x.ai/v1/chat/completions",
                 },
                 "gemini": {
-                    "api_key": "",
                     "model": "gemini-pro",
-                    "base_url": "https://generativelanguage.googleapis.com/v1beta/models"
+                    "base_url": "https://generativelanguage.googleapis.com/v1beta/models",
                 },
                 "qwen": {
-                    "api_key": "",
                     "model": "qwen-turbo",
-                    "base_url": "https://dashscope.aliyuncs.com/api/v1/services/aigc/text-generation/generation"
-                }
+                    "base_url": "https://dashscope.aliyuncs.com/api/v1/services/aigc/text-generation/generation",
+                },
             },
             "cache": {
                 "cache_directory": "~/.ai-cmd",
@@ -359,103 +314,7 @@ class ConfigManager:
             mapping.pop(key, None)
         return mapping
 
-    def _get_bool(self, key, default):
-        """安全地从环境变量读取布尔值"""
-        try:
-            value = os.getenv(key, "").lower()
-            if value in ("true", "1", "yes", "on"):
-                return True
-            elif value in ("false", "0", "no", "off"):
-                return False
-            elif value == "":
-                return default
-            else:
-                print(
-                    f"Warning: Invalid boolean value for {key}: '{value}', using default: {default}"
-                )
-                return default
-        except Exception as e:
-            print(f"Warning: Error reading {key}: {e}, using default: {default}")
-            return default
-
-    def _get_float(self, key, default):
-        """安全地从环境变量读取浮点数"""
-        try:
-            value = os.getenv(key)
-            if value is None or value == "":
-                return default
-
-            parsed_value = float(value)
-
-            # 对特定配置项进行范围验证
-            if key in [
-                "AI_CMD_CONFIDENCE_THRESHOLD",
-                "AI_CMD_AUTO_COPY_THRESHOLD",
-                "AI_CMD_SIMILARITY_THRESHOLD",
-            ]:
-                if not (0.0 <= parsed_value <= 1.0):
-                    print(
-                        f"Warning: {key} should be between 0.0 and 1.0, got {parsed_value}, using default: {default}"
-                    )
-                    return default
-            elif key in ["AI_CMD_POSITIVE_WEIGHT", "AI_CMD_NEGATIVE_WEIGHT"]:
-                if parsed_value < 0.0:
-                    print(
-                        f"Warning: {key} should be non-negative, got {parsed_value}, using default: {default}"
-                    )
-                    return default
-
-            return parsed_value
-        except ValueError:
-            print(
-                f"Warning: Invalid float value for {key}: '{os.getenv(key)}', using default: {default}"
-            )
-            return default
-        except Exception as e:
-            print(f"Warning: Error reading {key}: {e}, using default: {default}")
-            return default
-
-    def _get_int(self, key, default):
-        """安全地从环境变量读取整数"""
-        try:
-            value = os.getenv(key)
-            if value is None or value == "":
-                return default
-
-            parsed_value = int(value)
-
-            # 对缓存大小限制进行范围验证
-            if key == "AI_CMD_CACHE_SIZE_LIMIT":
-                if parsed_value < 0:
-                    print(
-                        f"Warning: {key} should be non-negative, got {parsed_value}, using default: {default}"
-                    )
-                    return default
-                elif parsed_value > 10000:
-                    print(
-                        f"Warning: {key} seems too large ({parsed_value}), consider using a smaller value"
-                    )
-
-            return parsed_value
-        except ValueError:
-            print(
-                f"Warning: Invalid integer value for {key}: '{os.getenv(key)}', using default: {default}"
-            )
-            return default
-        except Exception as e:
-            print(f"Warning: Error reading {key}: {e}, using default: {default}")
-            return default
-
-    def _get_string(self, key, default):
-        """安全地从环境变量读取字符串"""
-        try:
-            value = os.getenv(key)
-            return value if value is not None else default
-        except Exception as e:
-            print(f"Warning: Error reading {key}: {e}, using default: {default}")
-            return default
-
-    def validate_config(self):
+    def is_valid_config_key(self, key: str) -> bool:
         """验证配置的合理性和完整性"""
         warnings = []
         errors = []
@@ -547,6 +406,8 @@ class ConfigManager:
 
     def print_config_summary(self):
         """打印当前配置摘要（用于调试）"""
+        from .keyring_manager import KeyringManager
+
         print("=== Configuration Summary ===")
 
         # 按类别显示配置
@@ -557,7 +418,11 @@ class ConfigManager:
                 "auto_copy_threshold",
                 "manual_confirmation_threshold",
             ],
-            "API Configuration": ["api_timeout_seconds", "max_retries", "default_provider"],
+            "API Configuration": [
+                "api_timeout_seconds",
+                "max_retries",
+                "default_provider",
+            ],
             "Cache Configuration": [
                 "cache_directory",
                 "database_file",
@@ -591,33 +456,23 @@ class ConfigManager:
             print(f"\nProvider Configurations:")
             for provider_name, provider_config in providers.items():
                 print(f"  {provider_name}:")
-                
-                # 检查API密钥，首先从配置，然后从环境变量
-                config_api_key = provider_config.get("api_key", "")
-                env_api_key_var = f"AI_CMD_{provider_name.upper()}_API_KEY"
-                env_api_key = os.getenv(env_api_key_var, "")
-                api_key = config_api_key or env_api_key
-                
-                # 检查模型，首先从配置，然后从环境变量
-                config_model = provider_config.get("model", "")
-                env_model_var = f"AI_CMD_{provider_name.upper()}_MODEL"
-                env_model = os.getenv(env_model_var, "")
-                model = config_model or env_model
-                
+
+                # 从 keyring 读取 API key 状态
+                has_api_key = KeyringManager.has_api_key(provider_name)
+                model = provider_config.get("model", "")
                 base_url = provider_config.get("base_url", "")
-                
-                api_key_source = "Config" if config_api_key else ("Environment" if env_api_key else "Not set")
-                model_source = "Config" if config_model else ("Environment" if env_model else "Not set")
-                
-                print(f"    api_key: {'***' if api_key else 'Not set'} ({api_key_source})")
-                print(f"    model: {model or 'Not set'} ({model_source})")
+
+                print(
+                    f"    api_key: {'✓ Set (in keyring)' if has_api_key else '✗ Not set'}"
+                )
+                print(f"    model: {model or 'Not set'}")
                 print(f"    base_url: {base_url or 'Not set'}")
 
         # 显示配置文件路径
         config_path = self._get_config_file_path()
         print(f"\nConfiguration Sources:")
         print(f"  JSON Config File: {config_path or 'Not found'}")
-        print(f"  Environment Variables: Available")
+        print(f"  API Keys: System Keyring")
         print(f"  Default Values: Fallback")
 
         # 显示验证结果
@@ -669,7 +524,9 @@ class ConfigManager:
     def set_config(self, key, value):
         config_path = self._get_config_file_path()
         if not config_path:
-            logger.error("No configuration file found. Create one with --create-config first.")
+            logger.error(
+                "No configuration file found. Create one with --create-config first."
+            )
             return False
 
         json_config = self._load_json_config() or {}
@@ -734,7 +591,9 @@ class ConfigManager:
                 json_config = self._load_json_config() or {}
                 expected_value = self._get_nested_value(json_config, key)
                 if expected_value is None:
-                    expected_value = self._get_nested_value(self.default_json_structure, key)
+                    expected_value = self._get_nested_value(
+                        self.default_json_structure, key
+                    )
             else:
                 expected_value = self.default_config.get(key)
 

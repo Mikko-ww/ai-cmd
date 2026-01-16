@@ -24,5 +24,6 @@ dist/
 .env
 
 # Other
+tmp/
 *.log
 *.tmp

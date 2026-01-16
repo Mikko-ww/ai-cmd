@@ -9,6 +9,7 @@ from typing import Optional
 from .config_manager import ConfigManager
 from .error_handler import GracefulDegradationManager
 from .logger import logger
+from .prompts import get_system_prompt
 
 
 class APIClientError(Exception):
@@ -48,25 +49,19 @@ class OpenRouterAPIClient:
         self.config = config_manager or ConfigManager()
         self.degradation_manager = degradation_manager or GracefulDegradationManager()
 
-        # API配置
+        # API配置 - 已废弃，使用 MultiProviderAPIClient 替代
+        # 保留此类仅为向后兼容
         self.base_url = base_url or "https://openrouter.ai/api/v1/chat/completions"
-        self.api_key = os.getenv("AI_CMD_OPENROUTER_API_KEY")
-        self.model = os.getenv("AI_CMD_OPENROUTER_MODEL")
-        self.model_backup = os.getenv("AI_CMD_OPENROUTER_MODEL_BACKUP")
+        self.api_key = None
+        self.model = None
+        self.model_backup = None
 
         # 请求配置
         self.timeout = self.config.get("api_timeout_seconds", 30)
         self.max_retries = self.config.get("max_retries", 3)
 
-        # 系统提示词
-        self.system_prompt = (
-            "You are a helpful assistant that provides shell commands based on a user's "
-            "natural language prompt. Only provide the shell command itself, with no additional "
-            "explanation, formatting, or markdown code blocks. Do not wrap the command in "
-            "backticks, code fences, or any other formatting. Return only the raw command text. "
-            "For any parameters that require user input, enclose them in angle brackets, "
-            "like so: <parameter_name>."
-        )
+        # 系统提示词 - 从prompts模块加载
+        self.system_prompt = get_system_prompt("default")
 
         # 初始化session
         self._session = None
@@ -113,7 +108,7 @@ class OpenRouterAPIClient:
             APIClientError: API请求相关错误
         """
         if not self.api_key:
-            raise APIAuthError("AI_CMD_OPENROUTER_API_KEY not found in environment")
+            raise APIAuthError("API key not configured. Please use settings.json to configure providers.")
 
         # 确定使用的模型
         is_use_backup_model = self.config.get("use_backup_model", False)
