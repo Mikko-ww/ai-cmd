@@ -6,13 +6,12 @@ Getting started
 - Install with uv
   - `uv sync`
   - `uv pip install -e .`
-- Set environment
-  - Required: `export AI_CMD_OPENROUTER_API_KEY=sk-...`
-  - Optional: `export AI_CMD_OPENROUTER_MODEL=...`
-  - Optional: `export AI_CMD_OPENROUTER_MODEL_BACKUP=...`
+- Configure API key
+  - `aicmd --create-config` to generate `~/.ai-cmd/settings.json`
+  - Edit the file and add your API key to the provider configuration (e.g., `providers.openrouter.api_key`)
 - First run
   - `aicmd "list all files"`
-  - `aicmd --create-config` to generate `~/.ai-cmd/settings.json` and enable interactive mode if desired
+  - Enable interactive mode in settings if desired
 
 Basic usage
 - `aicmd "<prompt>"` converts your prompt to a shell command.
@@ -43,7 +42,7 @@ Interactive vs basic mode
   - Active when `interactive_mode` is false or when `--force-api`/`--disable-interactive` is used.
   - Directly calls the API and prints the command, copying to clipboard unless disabled or deemed unsafe.
 - Interactive mode
-  - Enabled by setting `basic.interactive_mode: true` in config (or `AI_CMD_INTERACTIVE_MODE=true`).
+  - Enabled by setting `basic.interactive_mode: true` in config.
   - Shows confidence and similarity metrics when available.
   - Performs safety checks and may force confirmation or disable auto-copy for risky commands.
   - Asks for confirmation based on thresholds: `confidence_threshold`, `manual_confirmation_threshold`, `auto_copy_threshold`.
@@ -65,7 +64,6 @@ Configuration
 - Sources and priority
   - User file: `~/.ai-cmd/settings.json`
   - Project file: `./.ai-cmd.json`
-  - Environment variables override specific keys.
   - Built-in defaults fill the rest.
 - Create template: `aicmd --create-config` (or `--create-config-force`)
 - Inspect: `aicmd --show-config`
@@ -73,11 +71,11 @@ Configuration
 - Update: `aicmd --set-config KEY VALUE`
 - Key highlights (full structure in README)
   - `basic`: `interactive_mode`, `cache_enabled`, thresholds: `auto_copy_threshold`, `manual_confirmation_threshold`
-  - `api`: `timeout_seconds`, `max_retries`, `use_backup_model`
+  - `api`: `timeout_seconds`, `max_retries`, `use_backup_model`, `default_provider`
+  - `providers`: Configure API keys and models for OpenRouter, OpenAI, DeepSeek, xAI, Gemini, Qwen
   - `cache`: `cache_directory`, `database_file`, `max_cache_age_days`, `cache_size_limit`
   - `interaction`: `interaction_timeout_seconds`, `positive_weight`, `negative_weight`, `similarity_threshold`, `confidence_threshold`
   - `display`: `colored_output`, `show_confidence`, `show_source`
-- Environment overrides (selected): `AI_CMD_INTERACTIVE_MODE`, `AI_CMD_CONFIDENCE_THRESHOLD`, `AI_CMD_AUTO_COPY_THRESHOLD`, `AI_CMD_POSITIVE_WEIGHT`, `AI_CMD_NEGATIVE_WEIGHT`, `AI_CMD_SIMILARITY_THRESHOLD`, `AI_CMD_CACHE_ENABLED`, `AI_CMD_CACHE_SIZE_LIMIT`, `AI_CMD_CACHE_DIR`
 
 Cache and confidence
 - Storage: SQLite at `~/.ai-cmd/cache.db` by default (configurable path and file).
@@ -105,8 +103,8 @@ Examples
   - `aicmd "download file" --base-url https://proxy.example/api/v1/chat/completions`
 
 Troubleshooting
-- Missing API key: set `AI_CMD_OPENROUTER_API_KEY`.
-- No model configured: set `AI_CMD_OPENROUTER_MODEL` or enable `use_backup_model` with a backup.
+- Missing API key: create config with `aicmd --create-config` and set your provider API key in `~/.ai-cmd/settings.json`.
+- No model configured: set the model in your provider configuration or enable `use_backup_model` with a backup.
 - Rate limit/timeout: automatic retries are enabled; try again later or provide a backup model.
 - Cache disabled after errors: `aicmd --reset-errors` and check logs under `~/.ai-cmd/logs/`.
 

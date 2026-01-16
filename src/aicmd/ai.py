@@ -1,7 +1,6 @@
 import os
 import argparse
 import pyperclip
-from dotenv import load_dotenv
 from . import __version__, __author__, __email__
 from .error_handler import GracefulDegradationManager
 from .config_manager import ConfigManager
@@ -12,8 +11,6 @@ from .interactive_manager import InteractiveManager, ConfirmationResult
 from .multi_provider_api_client import MultiProviderAPIClient
 from .safety_checker import CommandSafetyChecker
 from .logger import logger
-
-load_dotenv()
 
 # 全局错误处理管理器
 degradation_manager = GracefulDegradationManager()
@@ -780,14 +777,21 @@ def show_configuration():
             f"  Manual Confirmation Threshold: {config.get('manual_confirmation_threshold', 0.8)}"
         )
 
-        # API配置
-        api_key = os.getenv("AI_CMD_OPENROUTER_API_KEY")
-        model_name = os.getenv("AI_CMD_OPENROUTER_MODEL", "Not set")
-        model_name_backup = os.getenv("AI_CMD_OPENROUTER_MODEL_BACKUP", "Not set")
+        # API配置 - 从配置文件读取
+        providers = config.get("providers", {})
+        default_provider = config.get("default_provider", "openrouter")
+        
         print("\nAPI Configuration:")
-        print(f"  API Key: {'✓ Set' if api_key else '✗ Not found'}")
-        print(f"  Model: {model_name}")
-        print(f"  Backup Model: {model_name_backup}")
+        if providers:
+            print(f"  Default Provider: {default_provider}")
+            for provider_name, provider_config in providers.items():
+                api_key = provider_config.get("api_key", "")
+                model = provider_config.get("model", "")
+                print(f"  {provider_name}:")
+                print(f"    API Key: {'✓ Set' if api_key else '✗ Not set'}")
+                print(f"    Model: {model or 'Not set'}")
+        else:
+            print("  No providers configured")
         print(f"  use_backup_model: {config.get('use_backup_model', False)}")
 
         # 缓存配置
@@ -974,11 +978,10 @@ def test_provider_command(provider_name: str):
                 for issue in validation_result["issues"]:
                     print(f"  • {issue}")
         
-        print(f"\nTo configure {provider_name}, you can:")
-        print(f"  1. Set environment variables:")
-        print(f"     export AI_CMD_{provider_name.upper()}_API_KEY=<your_key>")
-        print(f"     export AI_CMD_{provider_name.upper()}_MODEL=<model_name>")
-        print(f"  2. Or edit your config file and set providers.{provider_name}.* values")
+        print(f"\nTo configure {provider_name}:")
+        print(f"  1. Use: aicmd --create-config")
+        print(f"  2. Edit your config file (~/.ai-cmd/settings.json)")
+        print(f"  3. Set providers.{provider_name}.api_key and providers.{provider_name}.model")
         
     except Exception as e:
         print(f"Error testing provider: {e}")

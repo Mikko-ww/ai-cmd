@@ -19,8 +19,9 @@
 
 2）配置 API 密钥（必需）
 
-- `export AI_CMD_OPENROUTER_API_KEY=sk-...`
-- 可选模型：`AI_CMD_OPENROUTER_MODEL`、`AI_CMD_OPENROUTER_MODEL_BACKUP`
+- 创建配置文件：`aicmd --create-config`
+- 编辑 `~/.ai-cmd/settings.json` 并在提供商配置中添加 API 密钥
+- 示例：将 `providers.openrouter.api_key` 设置为你的 OpenRouter API 密钥
 
 3）运行一个提示
 
@@ -46,7 +47,6 @@
 - 位置（优先级从低到高，后写覆盖前写）
   - 用户配置：`~/.ai-cmd/settings.json`
   - 项目配置：`./.ai-cmd.json`
-  - 环境变量（覆盖部分键）
   - 内置默认值
 
 - 生成配置模板
@@ -62,7 +62,7 @@
 - 配置示例（节选）
 ```
 {
-  "version": "0.4.1",
+  "version": "1.0.0",
   "basic": {
     "interactive_mode": true,
     "cache_enabled": true,
@@ -94,17 +94,6 @@
 - JSON 输出
   - 使用 `--json` 输出：`{ command, source, confidence, similarity, dangerous, confirmed }`
 
-环境变量
-- **多 LLM 提供商支持**：支持 OpenRouter、OpenAI、DeepSeek、xAI、Gemini、Qwen
-  - 默认提供商：`AI_CMD_DEFAULT_PROVIDER`（可选，默认为 `openrouter`）
-  - OpenRouter：`AI_CMD_OPENROUTER_API_KEY`、`AI_CMD_OPENROUTER_MODEL`、`AI_CMD_OPENROUTER_MODEL_BACKUP`
-  - OpenAI：`AI_CMD_OPENAI_API_KEY`、`AI_CMD_OPENAI_MODEL`（默认 `gpt-3.5-turbo`）
-  - DeepSeek：`AI_CMD_DEEPSEEK_API_KEY`、`AI_CMD_DEEPSEEK_MODEL`（默认 `deepseek-chat`）
-  - xAI：`AI_CMD_XAI_API_KEY`、`AI_CMD_XAI_MODEL`（默认 `grok-beta`）
-  - Gemini：`AI_CMD_GEMINI_API_KEY`、`AI_CMD_GEMINI_MODEL`（默认 `gemini-pro`）
-  - Qwen：`AI_CMD_QWEN_API_KEY`、`AI_CMD_QWEN_MODEL`（默认 `qwen-turbo`）
-- 可选调参（覆盖部分配置）：`AI_CMD_INTERACTIVE_MODE`、`AI_CMD_CONFIDENCE_THRESHOLD`、`AI_CMD_AUTO_COPY_THRESHOLD`、`AI_CMD_POSITIVE_WEIGHT`、`AI_CMD_NEGATIVE_WEIGHT`、`AI_CMD_SIMILARITY_THRESHOLD`、`AI_CMD_CACHE_ENABLED`、`AI_CMD_CACHE_SIZE_LIMIT`、`AI_CMD_CACHE_DIR`
-
 LLM 提供商管理
 - 列出支持的提供商：`aicmd --list-providers`
 - 测试提供商配置：`aicmd --test-provider <提供商名称>`
@@ -112,9 +101,9 @@ LLM 提供商管理
 - 向后兼容：未设置提供商时自动使用 OpenRouter
 
 问题排查
-- “找不到 API key”：设置 `AI_CMD_OPENROUTER_API_KEY`
-- “未指定模型”：设置 `AI_CMD_OPENROUTER_MODEL` 或在配置中启用备用模型
-- “限流/超时”：客户端带重试；稍后再试或设置备用模型
+- "找不到 API key"：使用 `aicmd --create-config` 创建配置并在 `~/.ai-cmd/settings.json` 中设置提供商 API 密钥
+- "未指定模型"：在提供商配置中设置模型或在配置中启用备用模型
+- "限流/超时"：客户端带重试；稍后再试或设置备用模型
 - 缓存被禁用：执行 `aicmd --reset-errors`，并查看日志 `~/.ai-cmd/logs/`
 
 开发
@@ -125,4 +114,3 @@ LLM 提供商管理
 
 许可
 - MIT。详见仓库。
-

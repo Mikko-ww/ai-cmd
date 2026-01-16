@@ -3,7 +3,7 @@
 ## Project Structure & Module Organization
 - `src/aicmd/`: Core package (CLI in `ai.py`; config, cache, database, interaction, logging utilities; `setting_template.json`).
 - `pyproject.toml`: Packaging, console script entry (`aicmd`), dev deps.
-- Docs: `README.md`, `USAGE.md`; example env: `.env.example`.
+- Docs: `README.md`, `USAGE.md`.
 - Config/Cache: user config `~/.ai-cmd/settings.json`; project config `.ai-cmd.json`; cache DB `~/.ai-cmd/cache.db`.
 
 ## Build, Test, and Development Commands
@@ -31,7 +31,7 @@
 - Pre‑merge checklist: `uv sync`, format + lint, tests pass.
 
 ## Security & Configuration Tips
-- Never commit `.env` or cache DBs. Use `.env.example` as the template.
-- Required env: `AI_CMD_OPENROUTER_API_KEY`; optional: `AI_CMD_OPENROUTER_MODEL`, `AI_CMD_OPENROUTER_MODEL_BACKUP`.
+- Never commit cache DBs or sensitive configuration files.
+- Configure API keys in `~/.ai-cmd/settings.json` using the providers section.
 - Helpful: `aicmd --create-config`, `aicmd --validate-config`, `aicmd --show-config`.
 

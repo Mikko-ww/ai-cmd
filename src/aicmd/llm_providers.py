@@ -123,13 +123,10 @@ class OpenRouterProvider(LLMProvider):
     """OpenRouter 提供商实现"""
     
     def get_api_key(self) -> str:
-        return self.config.get("api_key") or os.getenv("AI_CMD_OPENROUTER_API_KEY", "")
+        return self.config.get("api_key", "")
     
     def get_model(self) -> str:
-        return (
-            self.config.get("model") 
-            or os.getenv("AI_CMD_OPENROUTER_MODEL", "")
-        )
+        return self.config.get("model", "")
     
     def get_base_url(self) -> str:
         return (
@@ -166,13 +163,10 @@ class OpenAIProvider(LLMProvider):
     """OpenAI 提供商实现"""
     
     def get_api_key(self) -> str:
-        return self.config.get("api_key") or os.getenv("AI_CMD_OPENAI_API_KEY", "")
+        return self.config.get("api_key", "")
     
     def get_model(self) -> str:
-        return (
-            self.config.get("model") 
-            or os.getenv("AI_CMD_OPENAI_MODEL", "gpt-3.5-turbo")
-        )
+        return self.config.get("model", "gpt-3.5-turbo")
     
     def get_base_url(self) -> str:
         return (
@@ -209,13 +203,10 @@ class DeepSeekProvider(LLMProvider):
     """DeepSeek 提供商实现"""
     
     def get_api_key(self) -> str:
-        return self.config.get("api_key") or os.getenv("AI_CMD_DEEPSEEK_API_KEY", "")
+        return self.config.get("api_key", "")
     
     def get_model(self) -> str:
-        return (
-            self.config.get("model") 
-            or os.getenv("AI_CMD_DEEPSEEK_MODEL", "deepseek-chat")
-        )
+        return self.config.get("model", "deepseek-chat")
     
     def get_base_url(self) -> str:
         return (
@@ -252,13 +243,10 @@ class XAIProvider(LLMProvider):
     """xAI (Grok) 提供商实现"""
     
     def get_api_key(self) -> str:
-        return self.config.get("api_key") or os.getenv("AI_CMD_XAI_API_KEY", "")
+        return self.config.get("api_key", "")
     
     def get_model(self) -> str:
-        return (
-            self.config.get("model") 
-            or os.getenv("AI_CMD_XAI_MODEL", "grok-beta")
-        )
+        return self.config.get("model", "grok-beta")
     
     def get_base_url(self) -> str:
         return (
@@ -295,13 +283,10 @@ class GeminiProvider(LLMProvider):
     """Google Gemini 提供商实现"""
     
     def get_api_key(self) -> str:
-        return self.config.get("api_key") or os.getenv("AI_CMD_GEMINI_API_KEY", "")
+        return self.config.get("api_key", "")
     
     def get_model(self) -> str:
-        return (
-            self.config.get("model") 
-            or os.getenv("AI_CMD_GEMINI_MODEL", "gemini-pro")
-        )
+        return self.config.get("model", "gemini-pro")
     
     def get_base_url(self) -> str:
         base_url = (
@@ -384,13 +369,10 @@ class QwenProvider(LLMProvider):
     """通义千问 Qwen 提供商实现"""
     
     def get_api_key(self) -> str:
-        return self.config.get("api_key") or os.getenv("AI_CMD_QWEN_API_KEY", "")
+        return self.config.get("api_key", "")
     
     def get_model(self) -> str:
-        return (
-            self.config.get("model") 
-            or os.getenv("AI_CMD_QWEN_MODEL", "qwen-turbo")
-        )
+        return self.config.get("model", "qwen-turbo")
     
     def get_base_url(self) -> str:
         return (

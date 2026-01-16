@@ -1,6 +1,6 @@
 [project]
 name = "ai-cmd"
-version = "0.4.1"
+version = "1.0.0"
 description = "A smart command-line tool that converts natural language prompts to shell commands"
 readme = "README.md"
 requires-python = ">=3.9"
@@ -21,7 +21,7 @@ classifiers = [
     "Topic :: System :: Shells",
     "Topic :: Utilities",
 ]
-dependencies = ["requests>=2.25.0", "python-dotenv>=0.19.0", "pyperclip>=1.8.0"]
+dependencies = ["requests>=2.25.0", "pyperclip>=1.8.0"]
 
 [project.urls]
 Homepage = "https://github.com/Mikko-ww/ai-cmd"

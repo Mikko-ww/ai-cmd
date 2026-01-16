@@ -5,7 +5,7 @@ A smart command-line tool that converts natural language prompts to shell comman
 using OpenRouter API with intelligent caching and user interaction features.
 """
 
-__version__ = "0.4.1"
+__version__ = "1.0.0"
 __author__ = "Mikko"
 __email__ = "Allen125423412@163.com"
 
