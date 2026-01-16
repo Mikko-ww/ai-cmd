@@ -3,47 +3,54 @@ LLM Provider abstraction and implementations
 支持多个大语言模型提供商的抽象接口和具体实现
 """
 
-import os
 import requests
 from abc import ABC, abstractmethod
 from typing import Optional, Dict, Any
 from .logger import logger
-from .api_client import APIClientError, APITimeoutError, APIRateLimitError, APIAuthError
+from .api_client import (
+    APIClientError,
+    APITimeoutError,
+    APIRateLimitError,
+    APIAuthError,
+)
+from .keyring_manager import KeyringManager
 
 
 class LLMProvider(ABC):
     """大语言模型提供商抽象基类"""
-    
+
     def __init__(self, config: Dict[str, Any] = None):
         """初始化提供商"""
         self.config = config or {}
         self._session = None
-    
+
     @abstractmethod
     def get_api_key(self) -> str:
         """获取API密钥"""
         pass
-    
+
     @abstractmethod
     def get_model(self) -> str:
         """获取模型名称"""
         pass
-    
+
     @abstractmethod
     def get_base_url(self) -> str:
         """获取API基础URL"""
         pass
-    
+
     @abstractmethod
-    def build_request_payload(self, prompt: str, model: Optional[str] = None) -> Dict[str, Any]:
+    def build_request_payload(
+        self, prompt: str, model: Optional[str] = None
+    ) -> Dict[str, Any]:
         """构建请求载荷"""
         pass
-    
+
     @abstractmethod
     def parse_response(self, response: requests.Response) -> str:
         """解析API响应"""
         pass
-    
+
     def get_headers(self) -> Dict[str, str]:
         """获取请求头，子类可以重写"""
         api_key = self.get_api_key()
@@ -51,7 +58,7 @@ class LLMProvider(ABC):
             "Authorization": f"Bearer {api_key}",
             "Content-Type": "application/json",
         }
-    
+
     def _get_session(self, max_retries: int = 3) -> requests.Session:
         """获取或创建HTTP会话"""
         if self._session is None:
@@ -73,29 +80,28 @@ class LLMProvider(ABC):
                 logger.warning(f"Failed to setup retry strategy: {e}")
 
         return self._session
-    
-    def send_chat(self, prompt: str, model: Optional[str] = None, timeout: int = 30) -> str:
+
+    def send_chat(
+        self, prompt: str, model: Optional[str] = None, timeout: int = 30
+    ) -> str:
         """发送聊天请求"""
         api_key = self.get_api_key()
         if not api_key:
             raise APIAuthError(f"API key not found for {self.__class__.__name__}")
-        
+
         model = model or self.get_model()
         if not model:
             raise APIClientError(f"Model not specified for {self.__class__.__name__}")
-        
+
         session = self._get_session()
         headers = self.get_headers()
         payload = self.build_request_payload(prompt, model)
-        
+
         try:
             response = session.post(
-                self.get_base_url(),
-                json=payload,
-                headers=headers,
-                timeout=timeout
+                self.get_base_url(), json=payload, headers=headers, timeout=timeout
             )
-            
+
             if response.status_code == 200:
                 return self.parse_response(response)
             elif response.status_code == 401:
@@ -108,10 +114,10 @@ class LLMProvider(ABC):
                 raise APIClientError(
                     f"API request failed: {response.status_code} - {response.text}"
                 )
-        
+
         except requests.exceptions.Timeout:
             raise APITimeoutError(f"API request timed out after {timeout}s")
-    
+
     def close(self):
         """关闭HTTP会话"""
         if self._session:
@@ -121,20 +127,23 @@ class LLMProvider(ABC):
 
 class OpenRouterProvider(LLMProvider):
     """OpenRouter 提供商实现"""
-    
+
     def get_api_key(self) -> str:
-        return self.config.get("api_key", "")
-    
+        # 从 keyring 获取 API key，配置文件中的 api_key 不再使用
+        return KeyringManager.get_api_key("openrouter") or ""
+
     def get_model(self) -> str:
         return self.config.get("model", "")
-    
+
     def get_base_url(self) -> str:
         return (
-            self.config.get("base_url") 
+            self.config.get("base_url")
             or "https://openrouter.ai/api/v1/chat/completions"
         )
-    
-    def build_request_payload(self, prompt: str, model: Optional[str] = None) -> Dict[str, Any]:
+
+    def build_request_payload(
+        self, prompt: str, model: Optional[str] = None
+    ) -> Dict[str, Any]:
         return {
             "model": model or self.get_model(),
             "messages": [
@@ -150,7 +159,7 @@ class OpenRouterProvider(LLMProvider):
                 {"role": "user", "content": prompt},
             ],
         }
-    
+
     def parse_response(self, response: requests.Response) -> str:
         try:
             result = response.json()
@@ -161,20 +170,22 @@ class OpenRouterProvider(LLMProvider):
 
 class OpenAIProvider(LLMProvider):
     """OpenAI 提供商实现"""
-    
+
     def get_api_key(self) -> str:
-        return self.config.get("api_key", "")
-    
+        # 从 keyring 获取 API key，配置文件中的 api_key 不再使用
+        return KeyringManager.get_api_key("openai") or ""
+
     def get_model(self) -> str:
         return self.config.get("model", "gpt-3.5-turbo")
-    
+
     def get_base_url(self) -> str:
         return (
-            self.config.get("base_url") 
-            or "https://api.openai.com/v1/chat/completions"
+            self.config.get("base_url") or "https://api.openai.com/v1/chat/completions"
         )
-    
-    def build_request_payload(self, prompt: str, model: Optional[str] = None) -> Dict[str, Any]:
+
+    def build_request_payload(
+        self, prompt: str, model: Optional[str] = None
+    ) -> Dict[str, Any]:
         return {
             "model": model or self.get_model(),
             "messages": [
@@ -190,7 +201,7 @@ class OpenAIProvider(LLMProvider):
                 {"role": "user", "content": prompt},
             ],
         }
-    
+
     def parse_response(self, response: requests.Response) -> str:
         try:
             result = response.json()
@@ -201,20 +212,23 @@ class OpenAIProvider(LLMProvider):
 
 class DeepSeekProvider(LLMProvider):
     """DeepSeek 提供商实现"""
-    
+
     def get_api_key(self) -> str:
-        return self.config.get("api_key", "")
-    
+        # 从 keyring 获取 API key，配置文件中的 api_key 不再使用
+        return KeyringManager.get_api_key("deepseek") or ""
+
     def get_model(self) -> str:
         return self.config.get("model", "deepseek-chat")
-    
+
     def get_base_url(self) -> str:
         return (
-            self.config.get("base_url") 
+            self.config.get("base_url")
             or "https://api.deepseek.com/v1/chat/completions"
         )
-    
-    def build_request_payload(self, prompt: str, model: Optional[str] = None) -> Dict[str, Any]:
+
+    def build_request_payload(
+        self, prompt: str, model: Optional[str] = None
+    ) -> Dict[str, Any]:
         return {
             "model": model or self.get_model(),
             "messages": [
@@ -230,7 +244,7 @@ class DeepSeekProvider(LLMProvider):
                 {"role": "user", "content": prompt},
             ],
         }
-    
+
     def parse_response(self, response: requests.Response) -> str:
         try:
             result = response.json()
@@ -241,20 +255,20 @@ class DeepSeekProvider(LLMProvider):
 
 class XAIProvider(LLMProvider):
     """xAI (Grok) 提供商实现"""
-    
+
     def get_api_key(self) -> str:
-        return self.config.get("api_key", "")
-    
+        # 从 keyring 获取 API key，配置文件中的 api_key 不再使用
+        return KeyringManager.get_api_key("xai") or ""
+
     def get_model(self) -> str:
         return self.config.get("model", "grok-beta")
-    
+
     def get_base_url(self) -> str:
-        return (
-            self.config.get("base_url") 
-            or "https://api.x.ai/v1/chat/completions"
-        )
-    
-    def build_request_payload(self, prompt: str, model: Optional[str] = None) -> Dict[str, Any]:
+        return self.config.get("base_url") or "https://api.x.ai/v1/chat/completions"
+
+    def build_request_payload(
+        self, prompt: str, model: Optional[str] = None
+    ) -> Dict[str, Any]:
         return {
             "model": model or self.get_model(),
             "messages": [
@@ -270,7 +284,7 @@ class XAIProvider(LLMProvider):
                 {"role": "user", "content": prompt},
             ],
         }
-    
+
     def parse_response(self, response: requests.Response) -> str:
         try:
             result = response.json()
@@ -281,66 +295,60 @@ class XAIProvider(LLMProvider):
 
 class GeminiProvider(LLMProvider):
     """Google Gemini 提供商实现"""
-    
+
     def get_api_key(self) -> str:
-        return self.config.get("api_key", "")
-    
+        # 从 keyring 获取 API key，配置文件中的 api_key 不再使用
+        return KeyringManager.get_api_key("gemini") or ""
+
     def get_model(self) -> str:
         return self.config.get("model", "gemini-pro")
-    
+
     def get_base_url(self) -> str:
         base_url = (
-            self.config.get("base_url") 
+            self.config.get("base_url")
             or "https://generativelanguage.googleapis.com/v1beta/models"
         )
         model = self.get_model()
         return f"{base_url}/{model}:generateContent"
-    
+
     def get_headers(self) -> Dict[str, str]:
         """Gemini使用查询参数而不是Authorization头"""
         return {
             "Content-Type": "application/json",
         }
-    
-    def build_request_payload(self, prompt: str, model: Optional[str] = None) -> Dict[str, Any]:
+
+    def build_request_payload(
+        self, prompt: str, model: Optional[str] = None
+    ) -> Dict[str, Any]:
         system_prompt = (
             "You are a helpful assistant that provides shell commands based on a user's "
             "natural language prompt. Only provide the shell command, with no additional "
             "explanation or formatting. For any parameters that require user input, "
             "enclose them in angle brackets, like so: <parameter_name>."
         )
-        
+
         return {
-            "contents": [
-                {
-                    "parts": [
-                        {"text": f"{system_prompt}\n\nUser: {prompt}"}
-                    ]
-                }
-            ]
+            "contents": [{"parts": [{"text": f"{system_prompt}\n\nUser: {prompt}"}]}]
         }
-    
-    def send_chat(self, prompt: str, model: Optional[str] = None, timeout: int = 30) -> str:
+
+    def send_chat(
+        self, prompt: str, model: Optional[str] = None, timeout: int = 30
+    ) -> str:
         """重写发送方法以支持Gemini的API密钥传递方式"""
         api_key = self.get_api_key()
         if not api_key:
             raise APIAuthError(f"API key not found for {self.__class__.__name__}")
-        
+
         session = self._get_session()
         headers = self.get_headers()
         payload = self.build_request_payload(prompt, model)
-        
+
         # Gemini使用查询参数传递API密钥
         url = f"{self.get_base_url()}?key={api_key}"
-        
+
         try:
-            response = session.post(
-                url,
-                json=payload,
-                headers=headers,
-                timeout=timeout
-            )
-            
+            response = session.post(url, json=payload, headers=headers, timeout=timeout)
+
             if response.status_code == 200:
                 return self.parse_response(response)
             elif response.status_code == 401:
@@ -353,10 +361,10 @@ class GeminiProvider(LLMProvider):
                 raise APIClientError(
                     f"API request failed: {response.status_code} - {response.text}"
                 )
-        
+
         except requests.exceptions.Timeout:
             raise APITimeoutError(f"API request timed out after {timeout}s")
-    
+
     def parse_response(self, response: requests.Response) -> str:
         try:
             result = response.json()
@@ -367,19 +375,20 @@ class GeminiProvider(LLMProvider):
 
 class QwenProvider(LLMProvider):
     """通义千问 Qwen 提供商实现"""
-    
+
     def get_api_key(self) -> str:
-        return self.config.get("api_key", "")
-    
+        # 从 keyring 获取 API key，配置文件中的 api_key 不再使用
+        return KeyringManager.get_api_key("qwen") or ""
+
     def get_model(self) -> str:
         return self.config.get("model", "qwen-turbo")
-    
+
     def get_base_url(self) -> str:
         return (
-            self.config.get("base_url") 
+            self.config.get("base_url")
             or "https://dashscope.aliyuncs.com/api/v1/services/aigc/text-generation/generation"
         )
-    
+
     def get_headers(self) -> Dict[str, str]:
         """千问使用X-DashScope-SSE和Authorization头"""
         api_key = self.get_api_key()
@@ -388,8 +397,10 @@ class QwenProvider(LLMProvider):
             "Content-Type": "application/json",
             "X-DashScope-SSE": "disable",
         }
-    
-    def build_request_payload(self, prompt: str, model: Optional[str] = None) -> Dict[str, Any]:
+
+    def build_request_payload(
+        self, prompt: str, model: Optional[str] = None
+    ) -> Dict[str, Any]:
         return {
             "model": model or self.get_model(),
             "input": {
@@ -407,7 +418,7 @@ class QwenProvider(LLMProvider):
                 ]
             },
         }
-    
+
     def parse_response(self, response: requests.Response) -> str:
         try:
             result = response.json()

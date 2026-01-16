@@ -52,7 +52,9 @@ class ConfigManager:
 
         # 预加载默认 JSON 结构，用于键路径解析与类型推断
         self.default_json_structure = self._get_default_json_config()
-        self._simple_key_paths = self._build_simple_key_paths(self.default_json_structure)
+        self._simple_key_paths = self._build_simple_key_paths(
+            self.default_json_structure
+        )
 
         # 加载配置
         self.config = self._load_configuration()
@@ -229,6 +231,7 @@ class ConfigManager:
         return {
             "version": "1.0.0",
             "description": "AI Command Line Tool Configuration",
+            "_note": "API keys are now stored securely in system keyring. Use 'aicmd --set-api-key <provider> <key>' to configure.",
             "basic": {
                 "interactive_mode": False,
                 "cache_enabled": True,
@@ -236,42 +239,36 @@ class ConfigManager:
                 "manual_confirmation_threshold": 0.8,
             },
             "api": {
-                "timeout_seconds": 30, 
-                "max_retries": 3, 
+                "timeout_seconds": 30,
+                "max_retries": 3,
                 "use_backup_model": False,
-                "default_provider": ""
+                "default_provider": "",
             },
             "providers": {
                 "openrouter": {
-                    "api_key": "",
                     "model": "",
-                    "base_url": "https://openrouter.ai/api/v1/chat/completions"
+                    "base_url": "https://openrouter.ai/api/v1/chat/completions",
                 },
                 "openai": {
-                    "api_key": "",
                     "model": "gpt-3.5-turbo",
-                    "base_url": "https://api.openai.com/v1/chat/completions"
+                    "base_url": "https://api.openai.com/v1/chat/completions",
                 },
                 "deepseek": {
-                    "api_key": "",
                     "model": "deepseek-chat",
-                    "base_url": "https://api.deepseek.com/v1/chat/completions"
+                    "base_url": "https://api.deepseek.com/v1/chat/completions",
                 },
                 "xai": {
-                    "api_key": "",
                     "model": "grok-beta",
-                    "base_url": "https://api.x.ai/v1/chat/completions"
+                    "base_url": "https://api.x.ai/v1/chat/completions",
                 },
                 "gemini": {
-                    "api_key": "",
                     "model": "gemini-pro",
-                    "base_url": "https://generativelanguage.googleapis.com/v1beta/models"
+                    "base_url": "https://generativelanguage.googleapis.com/v1beta/models",
                 },
                 "qwen": {
-                    "api_key": "",
                     "model": "qwen-turbo",
-                    "base_url": "https://dashscope.aliyuncs.com/api/v1/services/aigc/text-generation/generation"
-                }
+                    "base_url": "https://dashscope.aliyuncs.com/api/v1/services/aigc/text-generation/generation",
+                },
             },
             "cache": {
                 "cache_directory": "~/.ai-cmd",
@@ -409,6 +406,8 @@ class ConfigManager:
 
     def print_config_summary(self):
         """打印当前配置摘要（用于调试）"""
+        from .keyring_manager import KeyringManager
+
         print("=== Configuration Summary ===")
 
         # 按类别显示配置
@@ -419,7 +418,11 @@ class ConfigManager:
                 "auto_copy_threshold",
                 "manual_confirmation_threshold",
             ],
-            "API Configuration": ["api_timeout_seconds", "max_retries", "default_provider"],
+            "API Configuration": [
+                "api_timeout_seconds",
+                "max_retries",
+                "default_provider",
+            ],
             "Cache Configuration": [
                 "cache_directory",
                 "database_file",
@@ -453,13 +456,15 @@ class ConfigManager:
             print(f"\nProvider Configurations:")
             for provider_name, provider_config in providers.items():
                 print(f"  {provider_name}:")
-                
-                # 从配置读取
-                api_key = provider_config.get("api_key", "")
+
+                # 从 keyring 读取 API key 状态
+                has_api_key = KeyringManager.has_api_key(provider_name)
                 model = provider_config.get("model", "")
                 base_url = provider_config.get("base_url", "")
-                
-                print(f"    api_key: {'***' if api_key else 'Not set'}")
+
+                print(
+                    f"    api_key: {'✓ Set (in keyring)' if has_api_key else '✗ Not set'}"
+                )
                 print(f"    model: {model or 'Not set'}")
                 print(f"    base_url: {base_url or 'Not set'}")
 
@@ -467,6 +472,7 @@ class ConfigManager:
         config_path = self._get_config_file_path()
         print(f"\nConfiguration Sources:")
         print(f"  JSON Config File: {config_path or 'Not found'}")
+        print(f"  API Keys: System Keyring")
         print(f"  Default Values: Fallback")
 
         # 显示验证结果
@@ -518,7 +524,9 @@ class ConfigManager:
     def set_config(self, key, value):
         config_path = self._get_config_file_path()
         if not config_path:
-            logger.error("No configuration file found. Create one with --create-config first.")
+            logger.error(
+                "No configuration file found. Create one with --create-config first."
+            )
             return False
 
         json_config = self._load_json_config() or {}
@@ -583,7 +591,9 @@ class ConfigManager:
                 json_config = self._load_json_config() or {}
                 expected_value = self._get_nested_value(json_config, key)
                 if expected_value is None:
-                    expected_value = self._get_nested_value(self.default_json_structure, key)
+                    expected_value = self._get_nested_value(
+                        self.default_json_structure, key
+                    )
             else:
                 expected_value = self.default_config.get(key)
 

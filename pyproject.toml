@@ -21,7 +21,7 @@ classifiers = [
     "Topic :: System :: Shells",
     "Topic :: Utilities",
 ]
-dependencies = ["requests>=2.25.0", "pyperclip>=1.8.0"]
+dependencies = ["requests>=2.25.0", "pyperclip>=1.8.0", "keyring>=24.0.0"]
 
 [project.urls]
 Homepage = "https://github.com/Mikko-ww/ai-cmd"

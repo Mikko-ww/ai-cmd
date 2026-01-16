@@ -500,18 +500,46 @@ Examples:
             action="store_true",
             help="Clean up expired and oversized cache entries",
         )
-        
+
         # Provider management options
         parser.add_argument(
             "--list-providers",
             action="store_true",
             help="List all supported LLM providers",
         )
-        
+
         parser.add_argument(
             "--test-provider",
             type=str,
             help="Test configuration for a specific provider",
+        )
+
+        # API Key management options
+        parser.add_argument(
+            "--set-api-key",
+            nargs=2,
+            metavar=("PROVIDER", "API_KEY"),
+            help="Set API key for a provider (stored securely in system keyring)",
+        )
+
+        parser.add_argument(
+            "--get-api-key",
+            type=str,
+            metavar="PROVIDER",
+            help="Check if API key is set for a provider (does not display the key)",
+        )
+
+        parser.add_argument(
+            "--delete-api-key",
+            type=str,
+            metavar="PROVIDER",
+            help="Delete API key for a provider from keyring",
+        )
+
+        parser.add_argument(
+            "--list-api-keys",
+            action="store_true",
+            help="List all providers with API keys configured",
         )
 
         # 解析命令行参数
@@ -563,9 +591,26 @@ Examples:
         if args.list_providers:
             list_providers_command()
             return
-            
+
         if args.test_provider:
             test_provider_command(args.test_provider)
+            return
+
+        # API Key management commands
+        if args.set_api_key:
+            set_api_key_command(args.set_api_key[0], args.set_api_key[1])
+            return
+
+        if args.get_api_key:
+            get_api_key_command(args.get_api_key)
+            return
+
+        if args.delete_api_key:
+            delete_api_key_command(args.delete_api_key)
+            return
+
+        if args.list_api_keys:
+            list_api_keys_command()
             return
 
         # 检查是否有实际的查询
@@ -762,6 +807,8 @@ def validate_configuration():
 def show_configuration():
     """显示当前配置信息"""
     try:
+        from .keyring_manager import KeyringManager
+
         config = ConfigManager()
 
         print("=== AI Command Tool Configuration ===")
@@ -777,18 +824,21 @@ def show_configuration():
             f"  Manual Confirmation Threshold: {config.get('manual_confirmation_threshold', 0.8)}"
         )
 
-        # API配置 - 从配置文件读取
+        # API配置 - 从 keyring 读取 API keys
         providers = config.get("providers", {})
         default_provider = config.get("default_provider", "openrouter")
-        
+
         print("\nAPI Configuration:")
         if providers:
             print(f"  Default Provider: {default_provider}")
             for provider_name, provider_config in providers.items():
-                api_key = provider_config.get("api_key", "")
+                # 从 keyring 获取 API key 状态
+                has_api_key = KeyringManager.has_api_key(provider_name)
                 model = provider_config.get("model", "")
                 print(f"  {provider_name}:")
-                print(f"    API Key: {'✓ Set' if api_key else '✗ Not set'}")
+                print(
+                    f"    API Key: {'✓ Set (in keyring)' if has_api_key else '✗ Not set'}"
+                )
                 print(f"    Model: {model or 'Not set'}")
         else:
             print("  No providers configured")
@@ -820,6 +870,12 @@ def show_configuration():
         print(
             f"  Database Available: {'✓' if error_stats['database_available'] else '✗'}"
         )
+
+        # API Key 管理提示
+        print("\nAPI Key Management:")
+        print("  API keys are stored securely in system keyring")
+        print("  Use 'aicmd --set-api-key <provider> <key>' to configure")
+        print("  Use 'aicmd --list-api-keys' to see configured providers")
 
     except Exception as e:
         print(f"Error displaying configuration: {e}")
@@ -910,25 +966,25 @@ def list_providers_command():
     """列出所有支持的LLM提供商"""
     try:
         from .llm_router import LLMRouter
-        
+
         router = LLMRouter()
         providers = router.list_providers()
         current_provider = router.get_current_provider()
-        
+
         print("=== Supported LLM Providers ===")
         print(f"Current default provider: {current_provider}")
         print("\nAvailable providers:")
-        
+
         for provider in providers:
             marker = " (current)" if provider == current_provider else ""
             print(f"  • {provider}{marker}")
-        
+
         print(f"\nTotal: {len(providers)} providers supported")
         print("\nTo set a provider as default, use:")
         print("  aicmd --set-config default_provider <provider_name>")
         print("\nTo test a provider configuration, use:")
         print("  aicmd --test-provider <provider_name>")
-        
+
     except Exception as e:
         print(f"Error listing providers: {e}")
 
@@ -937,26 +993,26 @@ def test_provider_command(provider_name: str):
     """测试指定提供商的配置"""
     try:
         from .llm_router import LLMRouter
-        
+
         router = LLMRouter()
         supported_providers = router.list_providers()
-        
+
         if provider_name not in supported_providers:
             print(f"✗ Unknown provider: {provider_name}")
             print(f"Supported providers: {', '.join(supported_providers)}")
             return
-            
+
         print(f"=== Testing Provider: {provider_name} ===")
-        
+
         validation_result = router.validate_provider_config(provider_name)
-        
+
         if validation_result["valid"]:
             print("✓ Provider configuration is valid")
             config = validation_result["config"]
             print(f"  API Key: {config['api_key']}")
             print(f"  Model: {config['model']}")
             print(f"  Base URL: {config['base_url']}")
-            
+
             # Try a simple test request
             print("\nTesting API connection...")
             try:
@@ -968,7 +1024,7 @@ def test_provider_command(provider_name: str):
                     print(f"✗ API test failed: {result}")
             except Exception as api_e:
                 print(f"✗ API test failed: {api_e}")
-                
+
         else:
             print("✗ Provider configuration is invalid")
             if "error" in validation_result:
@@ -977,14 +1033,126 @@ def test_provider_command(provider_name: str):
                 print("Issues:")
                 for issue in validation_result["issues"]:
                     print(f"  • {issue}")
-        
+
         print(f"\nTo configure {provider_name}:")
-        print(f"  1. Use: aicmd --create-config")
-        print(f"  2. Edit your config file (~/.ai-cmd/settings.json)")
-        print(f"  3. Set providers.{provider_name}.api_key and providers.{provider_name}.model")
-        
+        print(f"  1. Set API key: aicmd --set-api-key {provider_name} <your_api_key>")
+        print(
+            f"  2. Edit config file to set model: aicmd --set-config providers.{provider_name}.model <model_name>"
+        )
+
     except Exception as e:
         print(f"Error testing provider: {e}")
+
+
+def set_api_key_command(provider: str, api_key: str):
+    """设置提供商的 API Key"""
+    try:
+        from .keyring_manager import KeyringManager
+        from .llm_router import LLMRouter
+
+        router = LLMRouter()
+        supported_providers = router.list_providers()
+
+        if provider not in supported_providers:
+            print(f"✗ Unknown provider: {provider}")
+            print(f"Supported providers: {', '.join(supported_providers)}")
+            return
+
+        success = KeyringManager.set_api_key(provider, api_key)
+
+        if success:
+            print(f"✓ API key set successfully for provider: {provider}")
+            print(f"  The key is stored securely in your system keyring")
+            print(f"\nNext steps:")
+            print(
+                f"  1. Set this as default provider: aicmd --set-config default_provider {provider}"
+            )
+            print(
+                f"  2. Configure model: aicmd --set-config providers.{provider}.model <model_name>"
+            )
+            print(f"  3. Test the configuration: aicmd --test-provider {provider}")
+        else:
+            print(f"✗ Failed to set API key for provider: {provider}")
+
+    except Exception as e:
+        print(f"Error setting API key: {e}")
+
+
+def get_api_key_command(provider: str):
+    """检查提供商是否已设置 API Key"""
+    try:
+        from .keyring_manager import KeyringManager
+        from .llm_router import LLMRouter
+
+        router = LLMRouter()
+        supported_providers = router.list_providers()
+
+        if provider not in supported_providers:
+            print(f"✗ Unknown provider: {provider}")
+            print(f"Supported providers: {', '.join(supported_providers)}")
+            return
+
+        has_key = KeyringManager.has_api_key(provider)
+
+        if has_key:
+            print(f"✓ API key is configured for provider: {provider}")
+            print(f"  (Key is stored securely and not displayed)")
+        else:
+            print(f"✗ No API key configured for provider: {provider}")
+            print(f"  Use: aicmd --set-api-key {provider} <your_api_key>")
+
+    except Exception as e:
+        print(f"Error checking API key: {e}")
+
+
+def delete_api_key_command(provider: str):
+    """删除提供商的 API Key"""
+    try:
+        from .keyring_manager import KeyringManager
+        from .llm_router import LLMRouter
+
+        router = LLMRouter()
+        supported_providers = router.list_providers()
+
+        if provider not in supported_providers:
+            print(f"✗ Unknown provider: {provider}")
+            print(f"Supported providers: {', '.join(supported_providers)}")
+            return
+
+        success = KeyringManager.delete_api_key(provider)
+
+        if success:
+            print(f"✓ API key deleted for provider: {provider}")
+        else:
+            print(f"⚠ No API key found for provider: {provider}")
+
+    except Exception as e:
+        print(f"Error deleting API key: {e}")
+
+
+def list_api_keys_command():
+    """列出所有已配置 API Key 的提供商"""
+    try:
+        from .keyring_manager import KeyringManager
+
+        providers_with_keys = KeyringManager.list_providers_with_keys()
+
+        print("=== Configured API Keys ===")
+
+        if providers_with_keys:
+            print(f"Providers with API keys configured:")
+            for provider in providers_with_keys:
+                print(f"  ✓ {provider}")
+            print(f"\nTotal: {len(providers_with_keys)} provider(s)")
+        else:
+            print("No API keys configured yet")
+            print("\nTo set an API key:")
+            print("  aicmd --set-api-key <provider> <your_api_key>")
+            print("\nSupported providers:")
+            print("  openrouter, openai, deepseek, xai, gemini, qwen")
+
+    except Exception as e:
+        print(f"Error listing API keys: {e}")
 
 
 if __name__ == "__main__":
