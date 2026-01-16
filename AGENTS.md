@@ -22,6 +22,13 @@
 ## Testing Guidelines
 - Framework: `pytest`. Place tests under `tests/`, mirroring `aicmd` structure; files named `test_*.py`.
 - Isolate external effects: mock `requests.Session.post`, environment variables, and clipboard; use temp dirs for cache (`~/.ai-cmd`) and project configs.
+- **Keyring Isolation**: Always set `AICMD_KEYRING_SERVICE="com.aicmd.ww.test"` in test environment to avoid polluting production keyring data. Add to `tests/conftest.py`:
+  ```python
+  @pytest.fixture(scope="session", autouse=True)
+  def setup_test_environment():
+      os.environ["AICMD_KEYRING_SERVICE"] = "com.aicmd.ww.test"
+      yield
+  ```
 - Run locally with `uv run python -m pytest` before opening a PR.
 
 ## Commit & Pull Request Guidelines

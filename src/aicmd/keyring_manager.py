@@ -3,6 +3,7 @@ Keyring Manager - 安全存储和管理 API Keys
 使用系统 keyring 来安全存储敏感的 API 密钥
 """
 
+import os
 import keyring
 from typing import Optional
 from .logger import logger
@@ -12,7 +13,9 @@ class KeyringManager:
     """Keyring 管理器，负责安全存储和检索 API Keys"""
 
     # 服务名称，用于在 keyring 中标识此应用
-    SERVICE_NAME = "com.aicmd.ww"
+    # 可通过环境变量 AICMD_KEYRING_SERVICE 覆盖，用于测试环境隔离
+    _BASE_SERVICE_NAME = "com.aicmd.ww"
+    SERVICE_NAME = os.getenv("AICMD_KEYRING_SERVICE", _BASE_SERVICE_NAME)
 
     @classmethod
     def set_api_key(cls, provider: str, api_key: str) -> bool:
