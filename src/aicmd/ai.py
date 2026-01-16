@@ -1092,11 +1092,18 @@ def get_api_key_command(provider: str):
             print(f"Supported providers: {', '.join(supported_providers)}")
             return
 
-        has_key = KeyringManager.has_api_key(provider)
+        api_key = KeyringManager.get_api_key(provider)
 
-        if has_key:
+        if api_key:
+            # 显示前10字符，key小于 10 则显示前三个
+            masked_key_len = 10 if len(api_key) > 10 else 3
+            if len(api_key) > masked_key_len:
+                masked_key = api_key[:masked_key_len] + "*" * (len(api_key) - masked_key_len)
+            else:
+                masked_key = "*" * len(api_key)
+
             print(f"✓ API key is configured for provider: {provider}")
-            print(f"  (Key is stored securely and not displayed)")
+            print(f"  Key preview: {masked_key}")
         else:
             print(f"✗ No API key configured for provider: {provider}")
             print(f"  Use: aicmd --set-api-key {provider} <your_api_key>")
