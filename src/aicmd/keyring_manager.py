@@ -47,8 +47,6 @@ class KeyringManager:
         """
         try:
             api_key = keyring.get_password(cls.SERVICE_NAME, provider)
-            if api_key:
-                logger.info(f"API key retrieved for provider: {provider}")
             return api_key
         except Exception as e:
             logger.error(f"Failed to get API key for {provider}: {e}")
