@@ -14,6 +14,7 @@ from .api_client import (
     APIAuthError,
 )
 from .keyring_manager import KeyringManager
+from .prompts import get_system_prompt
 
 
 class LLMProvider(ABC):
@@ -149,12 +150,7 @@ class OpenRouterProvider(LLMProvider):
             "messages": [
                 {
                     "role": "system",
-                    "content": (
-                        "You are a helpful assistant that provides shell commands based on a user's "
-                        "natural language prompt. Only provide the shell command, with no additional "
-                        "explanation or formatting. For any parameters that require user input, "
-                        "enclose them in angle brackets, like so: <parameter_name>."
-                    ),
+                    "content": get_system_prompt("default"),
                 },
                 {"role": "user", "content": prompt},
             ],
@@ -191,12 +187,7 @@ class OpenAIProvider(LLMProvider):
             "messages": [
                 {
                     "role": "system",
-                    "content": (
-                        "You are a helpful assistant that provides shell commands based on a user's "
-                        "natural language prompt. Only provide the shell command, with no additional "
-                        "explanation or formatting. For any parameters that require user input, "
-                        "enclose them in angle brackets, like so: <parameter_name>."
-                    ),
+                    "content": get_system_prompt("default"),
                 },
                 {"role": "user", "content": prompt},
             ],
@@ -234,12 +225,7 @@ class DeepSeekProvider(LLMProvider):
             "messages": [
                 {
                     "role": "system",
-                    "content": (
-                        "You are a helpful assistant that provides shell commands based on a user's "
-                        "natural language prompt. Only provide the shell command, with no additional "
-                        "explanation or formatting. For any parameters that require user input, "
-                        "enclose them in angle brackets, like so: <parameter_name>."
-                    ),
+                    "content": get_system_prompt("default"),
                 },
                 {"role": "user", "content": prompt},
             ],
@@ -274,12 +260,7 @@ class XAIProvider(LLMProvider):
             "messages": [
                 {
                     "role": "system",
-                    "content": (
-                        "You are a helpful assistant that provides shell commands based on a user's "
-                        "natural language prompt. Only provide the shell command, with no additional "
-                        "explanation or formatting. For any parameters that require user input, "
-                        "enclose them in angle brackets, like so: <parameter_name>."
-                    ),
+                    "content": get_system_prompt("default"),
                 },
                 {"role": "user", "content": prompt},
             ],
@@ -320,12 +301,7 @@ class GeminiProvider(LLMProvider):
     def build_request_payload(
         self, prompt: str, model: Optional[str] = None
     ) -> Dict[str, Any]:
-        system_prompt = (
-            "You are a helpful assistant that provides shell commands based on a user's "
-            "natural language prompt. Only provide the shell command, with no additional "
-            "explanation or formatting. For any parameters that require user input, "
-            "enclose them in angle brackets, like so: <parameter_name>."
-        )
+        system_prompt = get_system_prompt("default")
 
         return {
             "contents": [{"parts": [{"text": f"{system_prompt}\n\nUser: {prompt}"}]}]
@@ -407,12 +383,7 @@ class QwenProvider(LLMProvider):
                 "messages": [
                     {
                         "role": "system",
-                        "content": (
-                            "You are a helpful assistant that provides shell commands based on a user's "
-                            "natural language prompt. Only provide the shell command, with no additional "
-                            "explanation or formatting. For any parameters that require user input, "
-                            "enclose them in angle brackets, like so: <parameter_name>."
-                        ),
+                        "content": get_system_prompt("default"),
                     },
                     {"role": "user", "content": prompt},
                 ]

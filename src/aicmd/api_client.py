@@ -9,6 +9,7 @@ from typing import Optional
 from .config_manager import ConfigManager
 from .error_handler import GracefulDegradationManager
 from .logger import logger
+from .prompts import get_system_prompt
 
 
 class APIClientError(Exception):
@@ -59,15 +60,8 @@ class OpenRouterAPIClient:
         self.timeout = self.config.get("api_timeout_seconds", 30)
         self.max_retries = self.config.get("max_retries", 3)
 
-        # 系统提示词
-        self.system_prompt = (
-            "You are a helpful assistant that provides shell commands based on a user's "
-            "natural language prompt. Only provide the shell command itself, with no additional "
-            "explanation, formatting, or markdown code blocks. Do not wrap the command in "
-            "backticks, code fences, or any other formatting. Return only the raw command text. "
-            "For any parameters that require user input, enclose them in angle brackets, "
-            "like so: <parameter_name>."
-        )
+        # 系统提示词 - 从prompts模块加载
+        self.system_prompt = get_system_prompt("default")
 
         # 初始化session
         self._session = None
