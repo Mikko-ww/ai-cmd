@@ -35,3 +35,9 @@
 - Configure API keys in `~/.ai-cmd/settings.json` using the providers section.
 - Helpful: `aicmd --create-config`, `aicmd --validate-config`, `aicmd --show-config`.
 
+## Test Script Location
+- **CRITICAL**: When creating test scripts, always use the project's `./tmp/` directory, NOT the system `/tmp/` directory.
+- Correct: `cat > ./tmp/test_example.sh` or `./tmp/test_api_key_preview.sh`
+- Incorrect: `cat > /tmp/test_example.sh` (this writes to system root `/tmp`, not the project)
+- Always include the `./` prefix to ensure scripts are created in the project's `tmp/` folder.
+
