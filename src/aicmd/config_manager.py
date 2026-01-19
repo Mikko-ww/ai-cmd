@@ -120,7 +120,6 @@ class ConfigManager:
             api = json_config["api"]
             flattened.update(
                 {
-                    "use_backup_model": api.get("use_backup_model", False),
                     "api_timeout_seconds": api.get("timeout_seconds"),
                     "max_retries": api.get("max_retries"),
                     "default_provider": api.get("default_provider", ""),
@@ -229,7 +228,7 @@ class ConfigManager:
     def _get_default_json_config(self):
         """获取默认JSON配置结构"""
         return {
-            "version": "1.0.0",
+            "version": "1.0.1",
             "description": "AI Command Line Tool Configuration",
             "_note": "API keys are now stored securely in system keyring. Use 'aicmd --set-api-key <provider> <key>' to configure.",
             "basic": {
@@ -241,7 +240,6 @@ class ConfigManager:
             "api": {
                 "timeout_seconds": 30,
                 "max_retries": 3,
-                "use_backup_model": False,
                 "default_provider": "",
             },
             "providers": {
