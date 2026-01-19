@@ -842,7 +842,6 @@ def show_configuration():
                 print(f"    Model: {model or 'Not set'}")
         else:
             print("  No providers configured")
-        print(f"  use_backup_model: {config.get('use_backup_model', False)}")
 
         # 缓存配置
         print("\nCache Configuration:")

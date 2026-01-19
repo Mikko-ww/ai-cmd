@@ -62,14 +62,14 @@ Configuration
 - Sample config (abbreviated)
 ```
 {
-  "version": "1.0.0",
+  "version": "1.0.1",
   "basic": {
     "interactive_mode": true,
     "cache_enabled": true,
     "auto_copy_threshold": 1.0,
     "manual_confirmation_threshold": 0.7
   },
-  "api": { "use_backup_model": false, "timeout_seconds": 30, "max_retries": 3 },
+  "api": { "timeout_seconds": 30, "max_retries": 3 },
   "cache": { "cache_directory": "~/.ai-cmd", "database_file": "cache.db", "max_cache_age_days": 30, "cache_size_limit": 1000 },
   "interaction": { "interaction_timeout_seconds": 30, "positive_weight": 0.3, "negative_weight": 0.6, "similarity_threshold": 0.6, "confidence_threshold": 0.75 },
   "display": { "show_confidence": false, "show_source": false, "colored_output": true }

@@ -111,10 +111,7 @@ class OpenRouterAPIClient:
             raise APIAuthError("API key not configured. Please use settings.json to configure providers.")
 
         # 确定使用的模型
-        is_use_backup_model = self.config.get("use_backup_model", False)
-        target_model = model or (
-            self.model_backup if is_use_backup_model else self.model
-        )
+        target_model = model or self.model
 
         if not target_model:
             raise APIClientError("No model specified in configuration")
@@ -182,7 +179,7 @@ class OpenRouterAPIClient:
                 return self.send_chat(prompt)
             except (APIClientError, APITimeoutError, APIRateLimitError) as e:
                 # 如果主模型失败且有备用模型，尝试备用模型
-                if self.model_backup and not self.config.get("use_backup_model", False):
+                if self.model_backup:
                     try:
                         logger.warning(f"Main model failed ({e}), trying backup model")
                         return self.send_chat(prompt, model=self.model_backup)

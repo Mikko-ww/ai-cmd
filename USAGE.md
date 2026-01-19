@@ -71,7 +71,7 @@ Configuration
 - Update: `aicmd --set-config KEY VALUE`
 - Key highlights (full structure in README)
   - `basic`: `interactive_mode`, `cache_enabled`, thresholds: `auto_copy_threshold`, `manual_confirmation_threshold`
-  - `api`: `timeout_seconds`, `max_retries`, `use_backup_model`, `default_provider`
+  - `api`: `timeout_seconds`, `max_retries`, `default_provider`
   - `providers`: Configure API keys and models for OpenRouter, OpenAI, DeepSeek, xAI, Gemini, Qwen
   - `cache`: `cache_directory`, `database_file`, `max_cache_age_days`, `cache_size_limit`
   - `interaction`: `interaction_timeout_seconds`, `positive_weight`, `negative_weight`, `similarity_threshold`, `confidence_threshold`
@@ -104,7 +104,7 @@ Examples
 
 Troubleshooting
 - Missing API key: create config with `aicmd --create-config` and set your provider API key in `~/.ai-cmd/settings.json`.
-- No model configured: set the model in your provider configuration or enable `use_backup_model` with a backup.
+- No model configured: set the model in your provider configuration.
 - Rate limit/timeout: automatic retries are enabled; try again later or provide a backup model.
 - Cache disabled after errors: `aicmd --reset-errors` and check logs under `~/.ai-cmd/logs/`.
 
