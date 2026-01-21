@@ -21,8 +21,8 @@ Quick start
 2) Configure your API key (required)
 
 - Create config file: `aicmd --create-config`
-- Edit `~/.ai-cmd/settings.json` and add your API key to the provider configuration
-- Example: Set `providers.openrouter.api_key` to your OpenRouter API key
+- Set your API key securely: `aicmd --set-api-key <provider> <your_api_key>`
+- Example: `aicmd --set-api-key openrouter sk-or-v1-your-key-here`
 
 3) Run a prompt
 
@@ -41,6 +41,8 @@ CLI at a glance
 - No clipboard/color: `--no-clipboard`, `--no-color`
 - Status and maintenance: `--status`, `--reset-errors`, `--cleanup-cache`, `--recalculate-confidence`
 - Config helpers: `--config`, `--show-config`, `--create-config`, `--create-config-force`, `--validate-config`, `--set-config KEY VALUE`
+- API key management: `--set-api-key PROVIDER KEY`, `--list-api-keys`, `--get-api-key PROVIDER`, `--delete-api-key PROVIDER`
+- Provider management: `--list-providers`, `--test-provider PROVIDER`
 - Networking: `--base-url https://proxy.example/api/v1/chat/completions`
 
 Configuration
@@ -69,12 +71,22 @@ Configuration
     "auto_copy_threshold": 1.0,
     "manual_confirmation_threshold": 0.7
   },
-  "api": { "timeout_seconds": 30, "max_retries": 3 },
+  "api": { "timeout_seconds": 30, "max_retries": 3, "default_provider": "openrouter" },
+  "providers": {
+    "openrouter": { "model": "", "base_url": "https://openrouter.ai/api/v1/chat/completions" },
+    "openai": { "model": "gpt-3.5-turbo", "base_url": "https://api.openai.com/v1/chat/completions" },
+    "deepseek": { "model": "deepseek-chat", "base_url": "https://api.deepseek.com/v1/chat/completions" },
+    "xai": { "model": "grok-beta", "base_url": "https://api.x.ai/v1/chat/completions" },
+    "gemini": { "model": "gemini-pro", "base_url": "https://generativelanguage.googleapis.com/v1beta/models" },
+    "qwen": { "model": "qwen-turbo", "base_url": "https://dashscope.aliyuncs.com/api/v1/services/aigc/text-generation/generation" }
+  },
   "cache": { "cache_directory": "~/.ai-cmd", "database_file": "cache.db", "max_cache_age_days": 30, "cache_size_limit": 1000 },
   "interaction": { "interaction_timeout_seconds": 30, "positive_weight": 0.3, "negative_weight": 0.6, "similarity_threshold": 0.6, "confidence_threshold": 0.75 },
   "display": { "show_confidence": false, "show_source": false, "colored_output": true }
 }
 ```
+
+Note: API keys are stored securely in system keyring, not in config files.
 
 Behavior and workflow
 - Modes
@@ -94,11 +106,30 @@ Behavior and workflow
 - JSON output
   - `--json` prints: `{ command, source, confidence, similarity, dangerous, confirmed }`
 
+Supported Providers
+- **OpenRouter** (default): Multi-model API gateway
+- **OpenAI**: GPT models (gpt-3.5-turbo, gpt-4, etc.)
+- **DeepSeek**: DeepSeek Chat models
+- **xAI/Grok**: Grok models (grok-beta)
+- **Google Gemini**: Gemini Pro models
+- **Alibaba Qwen**: Qwen Turbo models
+
+Each provider supports custom model and base_url configuration.
+
+API Key Management
+- Keys are stored securely in system keyring (not in config files)
+- Set key: `aicmd --set-api-key <provider> <key>`
+- List configured providers: `aicmd --list-api-keys`
+- Test provider: `aicmd --test-provider <provider>`
+- Remove key: `aicmd --delete-api-key <provider>`
+
 Troubleshooting
-- "API key not found": create config with `aicmd --create-config` and set your provider API key in `~/.ai-cmd/settings.json`
-- "No model specified": set the model in your provider configuration or enable backup via config
-- "Rate limit exceeded": the client retries; try again or set a backup model
+- "API key not found": use `aicmd --set-api-key <provider> <key>` to store your API key securely
+- "No model specified": set the model with `aicmd --set-config providers.<provider>.model <model_name>`
+- "Rate limit exceeded": the client retries; try again or configure a backup provider
 - Cache disabled due to errors: run `aicmd --reset-errors`, check `~/.ai-cmd/logs/`
+- Provider issues: use `aicmd --test-provider <provider>` to diagnose configuration problems
+- Configuration validation: use `aicmd --validate-config` to check for issues
 
 Development
 - Install: `uv sync`

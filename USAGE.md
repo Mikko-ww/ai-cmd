@@ -8,7 +8,8 @@ Getting started
   - `uv pip install -e .`
 - Configure API key
   - `aicmd --create-config` to generate `~/.ai-cmd/settings.json`
-  - Edit the file and add your API key to the provider configuration (e.g., `providers.openrouter.api_key`)
+  - Set your API key securely: `aicmd --set-api-key <provider> <your_api_key>`
+  - Example: `aicmd --set-api-key openrouter sk-or-v1-...`
 - First run
   - `aicmd "list all files"`
   - Enable interactive mode in settings if desired
@@ -36,6 +37,16 @@ CLI options
 - `--json`: Output a JSON object instead of plain text.
 - `--base-url URL`: Override API base URL (useful for proxies).
 - `--cleanup-cache`: Clean expired/oversized cache entries (TTL and size limit).
+
+API Key Management
+- `--set-api-key PROVIDER KEY`: Set API key for a provider (stored securely in system keyring).
+- `--get-api-key PROVIDER`: Check if API key is configured for a provider (shows masked preview).
+- `--delete-api-key PROVIDER`: Delete API key for a provider from keyring.
+- `--list-api-keys`: List all providers with API keys configured.
+
+Provider Management
+- `--list-providers`: List all supported LLM providers with current default.
+- `--test-provider PROVIDER`: Test configuration for a specific provider (validates config and tests API connection).
 
 Interactive vs basic mode
 - Basic mode
@@ -72,7 +83,7 @@ Configuration
 - Key highlights (full structure in README)
   - `basic`: `interactive_mode`, `cache_enabled`, thresholds: `auto_copy_threshold`, `manual_confirmation_threshold`
   - `api`: `timeout_seconds`, `max_retries`, `default_provider`
-  - `providers`: Configure API keys and models for OpenRouter, OpenAI, DeepSeek, xAI, Gemini, Qwen
+  - `providers`: Configure models and base URLs for OpenRouter, OpenAI, DeepSeek, xAI, Gemini, Qwen (API keys stored in keyring)
   - `cache`: `cache_directory`, `database_file`, `max_cache_age_days`, `cache_size_limit`
   - `interaction`: `interaction_timeout_seconds`, `positive_weight`, `negative_weight`, `similarity_threshold`, `confidence_threshold`
   - `display`: `colored_output`, `show_confidence`, `show_source`
@@ -94,6 +105,26 @@ Safety
 - May force confirmation and disable automatic clipboard copy for dangerous commands.
 - Always review commands before running them.
 
+API Key Management
+- Set API key for a provider
+  - `aicmd --set-api-key openrouter sk-or-v1-your-key-here`
+  - `aicmd --set-api-key openai sk-your-openai-key`
+- Check configured API keys
+  - `aicmd --list-api-keys` (shows all providers with keys)
+  - `aicmd --get-api-key openrouter` (shows masked preview)
+- Remove API key
+  - `aicmd --delete-api-key openrouter`
+
+Provider Management
+- List supported providers
+  - `aicmd --list-providers`
+- Test provider configuration
+  - `aicmd --test-provider openrouter` (validates config and tests API)
+- Set default provider
+  - `aicmd --set-config default_provider openai`
+- Configure provider model
+  - `aicmd --set-config providers.openai.model gpt-4`
+
 Examples
 - Force fresh result and JSON output
   - `aicmd "show open ports" --force-api --json`
@@ -101,10 +132,16 @@ Examples
   - `aicmd "list large files" --disable-interactive --no-clipboard`
 - Use a proxy base URL
   - `aicmd "download file" --base-url https://proxy.example/api/v1/chat/completions`
+- Set up a new provider
+  - `aicmd --set-api-key deepseek your-deepseek-key`
+  - `aicmd --set-config default_provider deepseek`
+  - `aicmd --test-provider deepseek`
 
 Troubleshooting
-- Missing API key: create config with `aicmd --create-config` and set your provider API key in `~/.ai-cmd/settings.json`.
-- No model configured: set the model in your provider configuration.
-- Rate limit/timeout: automatic retries are enabled; try again later or provide a backup model.
+- Missing API key: use `aicmd --set-api-key <provider> <key>` to store your API key securely in system keyring.
+- No model configured: set the model with `aicmd --set-config providers.<provider>.model <model_name>`.
+- Rate limit/timeout: automatic retries are enabled; try again later or configure a backup provider.
 - Cache disabled after errors: `aicmd --reset-errors` and check logs under `~/.ai-cmd/logs/`.
+- Provider issues: use `aicmd --test-provider <provider>` to diagnose configuration problems.
+- Configuration validation: use `aicmd --validate-config` to check for configuration issues.
 

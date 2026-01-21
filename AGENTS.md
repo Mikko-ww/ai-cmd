@@ -39,8 +39,8 @@
 
 ## Security & Configuration Tips
 - Never commit cache DBs or sensitive configuration files.
-- Configure API keys in `~/.ai-cmd/settings.json` using the providers section.
-- Helpful: `aicmd --create-config`, `aicmd --validate-config`, `aicmd --show-config`.
+- Configure API keys securely using `aicmd --set-api-key <provider> <key>` (stored in system keyring).
+- Helpful: `aicmd --create-config`, `aicmd --validate-config`, `aicmd --show-config`, `aicmd --test-provider <provider>`.
 
 ## Test Script Location
 - **CRITICAL**: When creating test scripts, always use the project's `./tmp/` directory, NOT the system `/tmp/` directory.
