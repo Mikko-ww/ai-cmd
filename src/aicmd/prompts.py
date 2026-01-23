@@ -3,8 +3,8 @@
 集中管理所有AI交互的系统提示词，方便统一调整和维护
 """
 
-# 默认系统提示词 - 用于生成shell命令
-DEFAULT_SYSTEM_PROMPT = (
+# 默认AICMD系统提示词 - 用于生成shell命令
+AICMD_DEF_SYSTEM_PROMPT = (
     "You are a helpful assistant that provides shell commands based on a user's "
     "natural language prompt. Only provide the shell command itself, with no additional "
     "explanation, formatting, or markdown code blocks. Do not wrap the command in "
@@ -25,10 +25,10 @@ def get_system_prompt(prompt_type: str = "default") -> str:
         对应的系统提示词字符串
     """
     prompts = {
-        "default": DEFAULT_SYSTEM_PROMPT,
+        "default": AICMD_DEF_SYSTEM_PROMPT,
         # 未来可以在这里添加更多类型的提示词
         # "explain": EXPLAIN_PROMPT,
         # "debug": DEBUG_PROMPT,
     }
     
-    return prompts.get(prompt_type, DEFAULT_SYSTEM_PROMPT)
+    return prompts.get(prompt_type, AICMD_DEF_SYSTEM_PROMPT)
