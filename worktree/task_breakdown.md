@@ -33,15 +33,15 @@
    - `test_integration.py` - 端到端流程测试
    - Mock API 调用测试
 
-5. 配置 CI
-   - 创建 `.github/workflows/test.yml`
-   - 配置多 Python 版本测试（3.9-3.12）
-   - 添加测试覆盖率报告
+5. 本地测试运行说明（不包含 CI 配置）
+   - 约定本地执行命令：`uv run python -m pytest`
+   - 可选覆盖率（仅本地）：`uv run python -m pytest --cov=aicmd --cov-report=term-missing`
+   - 不创建/不维护 GitHub Actions 工作流（例如 `.github/workflows/test.yml`）
 
 **验收标准：**
 - [ ] 测试覆盖率达到 60% 以上
 - [ ] 所有测试通过
-- [ ] CI 自动运行测试
+- [ ] 本地可一键运行测试（见本任务的运行说明）
 - [ ] 测试文档完善
 
 **预计工作量：** 5-7 天

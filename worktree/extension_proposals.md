@@ -356,6 +356,8 @@
    - GitLab CI 配置生成
    - Jenkins pipeline 脚本
 
+   说明：以上为“生成/输出 CI 配置文件内容”的功能扩展点；本仓库当前不包含 CI 工作流配置，也不创建 `.github/workflows/test.yml`
+
 3. 云平台操作：
    - AWS CLI 命令生成
    - Azure CLI 命令生成
