@@ -1,15 +1,122 @@
 """
 数据库管理器模块
 负责 SQLite 数据库的创建、初始化和安全管理
+支持连接池、批量操作和性能优化
 """
 
 import sqlite3
 import os
 import threading
+import time
 from pathlib import Path
 from datetime import datetime
+from typing import Optional, List, Tuple, Any, Dict
+from queue import Queue, Empty
+from contextlib import contextmanager
 from .config_manager import ConfigManager
 from .hash_utils import hash_query
+
+
+# =============================================================================
+# 连接池实现
+# =============================================================================
+
+class DatabaseConnectionPool:
+    """SQLite 连接池管理器"""
+    
+    def __init__(
+        self,
+        db_path: str,
+        pool_size: int = 5,
+        timeout: float = 10.0
+    ):
+        """
+        初始化连接池
+        
+        Args:
+            db_path: 数据库文件路径
+            pool_size: 连接池大小
+            timeout: 获取连接的超时时间（秒）
+        """
+        self.db_path = db_path
+        self.pool_size = pool_size
+        self.timeout = timeout
+        self._pool: Queue = Queue(maxsize=pool_size)
+        self._lock = threading.Lock()
+        self._initialized = False
+        
+        # 延迟初始化
+        self._initialize_pool()
+    
+    def _initialize_pool(self):
+        """初始化连接池"""
+        if self._initialized:
+            return
+        
+        with self._lock:
+            if self._initialized:
+                return
+            
+            try:
+                for _ in range(self.pool_size):
+                    conn = self._create_connection()
+                    if conn:
+                        self._pool.put(conn)
+                self._initialized = True
+            except Exception as e:
+                print(f"Warning: Failed to initialize connection pool: {e}")
+    
+    def _create_connection(self) -> Optional[sqlite3.Connection]:
+        """创建新的数据库连接"""
+        try:
+            conn = sqlite3.connect(
+                self.db_path,
+                timeout=self.timeout,
+                check_same_thread=False  # 允许跨线程使用
+            )
+            # 启用 WAL 模式以提高并发性能
+            conn.execute("PRAGMA journal_mode=WAL")
+            # 启用外键约束
+            conn.execute("PRAGMA foreign_keys=ON")
+            # 优化同步模式
+            conn.execute("PRAGMA synchronous=NORMAL")
+            # 增加缓存大小
+            conn.execute("PRAGMA cache_size=-10000")  # 约 10MB
+            return conn
+        except Exception as e:
+            print(f"Warning: Failed to create database connection: {e}")
+            return None
+    
+    @contextmanager
+    def get_connection(self):
+        """获取数据库连接（上下文管理器）"""
+        conn = None
+        try:
+            conn = self._pool.get(timeout=self.timeout)
+            yield conn
+        except Empty:
+            # 池中没有可用连接，创建临时连接
+            conn = self._create_connection()
+            yield conn
+            if conn:
+                conn.close()
+            conn = None
+        finally:
+            if conn is not None:
+                try:
+                    self._pool.put_nowait(conn)
+                except:
+                    conn.close()
+    
+    def close_all(self):
+        """关闭所有连接"""
+        while not self._pool.empty():
+            try:
+                conn = self._pool.get_nowait()
+                conn.close()
+            except:
+                pass
+        self._initialized = False
 
 
 class SafeDatabaseManager:
@@ -366,6 +473,309 @@ class SafeDatabaseManager:
         except Exception as e:
             print(f"Warning: Database backup failed: {e}")
             return False
+
+    # =========================================================================
+    # 批量操作方法
+    # =========================================================================
+
+    def execute_batch(
+        self,
+        query: str,
+        params_list: List[Tuple],
+        batch_size: int = 100
+    ) -> int:
+        """
+        批量执行数据库插入/更新操作
+        
+        Args:
+            query: SQL 查询语句（带占位符）
+            params_list: 参数列表
+            batch_size: 每批处理的记录数
+            
+        Returns:
+            成功处理的记录数
+        """
+        if not self.is_available or not self.db_path:
+            return 0
+        
+        total_affected = 0
+        
+        with self.lock:
+            try:
+                with sqlite3.connect(self.db_path, timeout=30.0) as conn:
+                    cursor = conn.cursor()
+                    
+                    # 启用事务优化
+                    conn.execute("PRAGMA synchronous=OFF")
+                    conn.execute("BEGIN TRANSACTION")
+                    
+                    try:
+                        for i in range(0, len(params_list), batch_size):
+                            batch = params_list[i:i + batch_size]
+                            cursor.executemany(query, batch)
+                            total_affected += cursor.rowcount
+                        
+                        conn.commit()
+                    except Exception as e:
+                        conn.rollback()
+                        raise e
+                    finally:
+                        # 恢复正常同步模式
+                        conn.execute("PRAGMA synchronous=NORMAL")
+                        
+            except Exception as e:
+                print(f"Warning: Batch execution failed: {e}")
+                return 0
+        
+        return total_affected
+
+    def bulk_insert_cache_entries(
+        self,
+        entries: List[Dict[str, Any]]
+    ) -> int:
+        """
+        批量插入缓存条目
+        
+        Args:
+            entries: 缓存条目字典列表，每个包含 query, command, confidence_score 等
+            
+        Returns:
+            成功插入的记录数
+        """
+        if not entries:
+            return 0
+        
+        query = """
+        INSERT OR REPLACE INTO enhanced_cache 
+        (query, query_hash, command, confidence_score, os_type, shell_type)
+        VALUES (?, ?, ?, ?, ?, ?)
+        """
+        
+        params_list = []
+        for entry in entries:
+            query_text = entry.get("query", "")
+            params_list.append((
+                query_text,
+                self.generate_query_hash(query_text),
+                entry.get("command", ""),
+                entry.get("confidence_score", 0.5),
+                entry.get("os_type"),
+                entry.get("shell_type")
+            ))
+        
+        return self.execute_batch(query, params_list)
+
+    def bulk_delete_by_ids(self, ids: List[int]) -> int:
+        """
+        批量删除指定 ID 的缓存条目
+        
+        Args:
+            ids: 要删除的记录 ID 列表
+            
+        Returns:
+            成功删除的记录数
+        """
+        if not ids or not self.is_available:
+            return 0
+        
+        with self.lock:
+            try:
+                with sqlite3.connect(self.db_path, timeout=10.0) as conn:
+                    placeholders = ",".join("?" * len(ids))
+                    cursor = conn.cursor()
+                    cursor.execute(
+                        f"DELETE FROM enhanced_cache WHERE id IN ({placeholders})",
+                        ids
+                    )
+                    conn.commit()
+                    return cursor.rowcount
+            except Exception as e:
+                print(f"Warning: Bulk delete failed: {e}")
+                return 0
+
+    # =========================================================================
+    # 数据库维护方法
+    # =========================================================================
+
+    def vacuum_database(self) -> bool:
+        """
+        执行 VACUUM 命令压缩数据库文件
+        
+        Returns:
+            是否成功
+        """
+        if not self.is_available or not self.db_path:
+            return False
+        
+        with self.lock:
+            try:
+                with sqlite3.connect(self.db_path, timeout=60.0) as conn:
+                    conn.execute("VACUUM")
+                print("Database vacuum completed successfully")
+                return True
+            except Exception as e:
+                print(f"Warning: Database vacuum failed: {e}")
+                return False
+
+    def analyze_database(self) -> bool:
+        """
+        执行 ANALYZE 命令更新索引统计信息
+        
+        Returns:
+            是否成功
+        """
+        if not self.is_available or not self.db_path:
+            return False
+        
+        with self.lock:
+            try:
+                with sqlite3.connect(self.db_path, timeout=30.0) as conn:
+                    conn.execute("ANALYZE")
+                return True
+            except Exception as e:
+                print(f"Warning: Database analyze failed: {e}")
+                return False
+
+    def check_integrity(self) -> Dict[str, Any]:
+        """
+        检查数据库完整性
+        
+        Returns:
+            完整性检查结果
+        """
+        result = {
+            "status": "unknown",
+            "integrity_check": None,
+            "foreign_key_check": None,
+            "errors": []
+        }
+        
+        if not self.is_available or not self.db_path:
+            result["status"] = "unavailable"
+            return result
+        
+        try:
+            with sqlite3.connect(self.db_path, timeout=30.0) as conn:
+                cursor = conn.cursor()
+                
+                # 完整性检查
+                cursor.execute("PRAGMA integrity_check")
+                integrity_result = cursor.fetchone()
+                result["integrity_check"] = integrity_result[0] if integrity_result else "unknown"
+                
+                # 外键检查
+                cursor.execute("PRAGMA foreign_key_check")
+                fk_errors = cursor.fetchall()
+                result["foreign_key_check"] = "ok" if not fk_errors else f"{len(fk_errors)} errors"
+                if fk_errors:
+                    result["errors"].extend([str(e) for e in fk_errors[:5]])  # 最多显示5个错误
+                
+                # 判断总体状态
+                if result["integrity_check"] == "ok" and result["foreign_key_check"] == "ok":
+                    result["status"] = "healthy"
+                else:
+                    result["status"] = "issues_found"
+                    
+        except Exception as e:
+            result["status"] = "error"
+            result["errors"].append(str(e))
+        
+        return result
+
+    def get_health_report(self) -> Dict[str, Any]:
+        """
+        获取数据库健康报告
+        
+        Returns:
+            包含各项健康指标的字典
+        """
+        report = {
+            "timestamp": datetime.now().isoformat(),
+            "status": "unknown",
+            "statistics": {},
+            "integrity": {},
+            "performance": {},
+            "recommendations": []
+        }
+        
+        if not self.is_available:
+            report["status"] = "unavailable"
+            return report
+        
+        try:
+            # 基本统计
+            report["statistics"] = self.get_database_stats()
+            
+            # 完整性检查
+            report["integrity"] = self.check_integrity()
+            
+            # 性能指标
+            with sqlite3.connect(self.db_path, timeout=10.0) as conn:
+                cursor = conn.cursor()
+                
+                # 检查索引使用情况
+                cursor.execute("SELECT COUNT(*) FROM sqlite_master WHERE type='index'")
+                index_count = cursor.fetchone()[0]
+                report["performance"]["index_count"] = index_count
+                
+                # 检查页面大小
+                cursor.execute("PRAGMA page_size")
+                report["performance"]["page_size"] = cursor.fetchone()[0]
+                
+                # 检查缓存大小
+                cursor.execute("PRAGMA cache_size")
+                report["performance"]["cache_size"] = cursor.fetchone()[0]
+                
+                # 检查日志模式
+                cursor.execute("PRAGMA journal_mode")
+                report["performance"]["journal_mode"] = cursor.fetchone()[0]
+            
+            # 生成建议
+            stats = report["statistics"]
+            if stats.get("db_size_mb", 0) > 100:
+                report["recommendations"].append("Database size > 100MB, consider running VACUUM")
+            
+            if stats.get("cache_entries", 0) > 10000:
+                report["recommendations"].append("Cache entries > 10000, consider cleanup")
+            
+            if report["integrity"]["status"] != "healthy":
+                report["recommendations"].append("Database integrity issues detected, backup and repair recommended")
+            
+            # 总体状态
+            if report["integrity"]["status"] == "healthy" and not report["recommendations"]:
+                report["status"] = "healthy"
+            elif report["integrity"]["status"] == "healthy":
+                report["status"] = "good_with_recommendations"
+            else:
+                report["status"] = "needs_attention"
+                
+        except Exception as e:
+            report["status"] = "error"
+            report["error"] = str(e)
+        
+        return report
+
+    def optimize(self) -> bool:
+        """
+        执行数据库优化操作
+        
+        Returns:
+            是否成功
+        """
+        success = True
+        
+        # 清理旧条目
+        self.cleanup_old_entries()
+        
+        # 分析索引
+        if not self.analyze_database():
+            success = False
+        
+        # 压缩数据库
+        if not self.vacuum_database():
+            success = False
+        
+        return success
 
     def __enter__(self):
         """上下文管理器支持"""
