@@ -39,6 +39,7 @@ CLI at a glance
 - Disable interactive (for this run): `--disable-interactive`
 - Output JSON: `--json`
 - No clipboard/color: `--no-clipboard`, `--no-color`
+- Logging: `--log-level`, `--file-log-level`, `--log-dir`
 - Status and maintenance: `--status`, `--reset-errors`, `--cleanup-cache`, `--recalculate-confidence`
 - Config helpers: `--config`, `--show-config`, `--create-config`, `--create-config-force`, `--validate-config`, `--set-config KEY VALUE`
 - API key management: `--set-api-key PROVIDER KEY`, `--list-api-keys`, `--get-api-key PROVIDER`, `--delete-api-key PROVIDER`
@@ -82,7 +83,8 @@ Configuration
   },
   "cache": { "cache_directory": "~/.ai-cmd", "database_file": "cache.db", "max_cache_age_days": 30, "cache_size_limit": 1000 },
   "interaction": { "interaction_timeout_seconds": 30, "positive_weight": 0.3, "negative_weight": 0.6, "similarity_threshold": 0.6, "confidence_threshold": 0.75 },
-  "display": { "show_confidence": false, "show_source": false, "colored_output": true }
+  "display": { "show_confidence": false, "show_source": false, "colored_output": true },
+  "logging": { "log_level": "INFO", "file_log_level": "DEBUG", "log_dir": "~/.ai-cmd/logs" }
 }
 ```
 

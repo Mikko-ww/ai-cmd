@@ -53,7 +53,7 @@ class TestConfigManager:
     def test_flatten_json_config(self):
         """测试 JSON 配置扁平化"""
         from aicmd.config_manager import ConfigManager
-        
+
         config = ConfigManager()
         
         nested_config = {
@@ -73,6 +73,26 @@ class TestConfigManager:
         assert flattened.get("cache_enabled") is False
         assert flattened.get("api_timeout_seconds") == 60
         assert flattened.get("max_retries") == 5
+
+    def test_flatten_json_config_logging(self):
+        """测试日志配置扁平化"""
+        from aicmd.config_manager import ConfigManager
+
+        config = ConfigManager()
+
+        nested_config = {
+            "logging": {
+                "log_level": "WARNING",
+                "file_log_level": "ERROR",
+                "log_dir": "/tmp/aicmd-logs",
+            }
+        }
+
+        flattened = config._flatten_json_config(nested_config)
+
+        assert flattened.get("log_level") == "WARNING"
+        assert flattened.get("file_log_level") == "ERROR"
+        assert flattened.get("log_dir") == "/tmp/aicmd-logs"
 
     def test_load_json_config_from_file(self, temp_config_dir):
         """测试从文件加载 JSON 配置"""
@@ -150,7 +170,7 @@ class TestConfigManager:
     def test_get_default_json_config(self):
         """测试获取默认 JSON 配置结构"""
         from aicmd.config_manager import ConfigManager
-        
+
         config = ConfigManager()
         default_json = config._get_default_json_config()
         
@@ -162,6 +182,7 @@ class TestConfigManager:
         assert "cache" in default_json
         assert "interaction" in default_json
         assert "display" in default_json
+        assert "logging" in default_json
 
     def test_create_user_config(self, temp_config_dir):
         """测试创建用户配置文件"""

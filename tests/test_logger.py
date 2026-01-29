@@ -299,3 +299,71 @@ class TestLoggerCompatibility:
         logger.error("test")
         logger.bold("test")
         logger.print("test")
+
+
+class TestLogConfigPrecedence:
+    """日志配置优先级测试"""
+
+    def test_resolve_log_config_cli_overrides(self):
+        """CLI 参数应覆盖环境变量和配置文件"""
+        from aicmd.logger import resolve_log_config
+
+        config = {
+            "log_level": "INFO",
+            "file_log_level": "DEBUG",
+            "log_dir": "/config/logs",
+        }
+        env = {
+            "AICMD_LOG_LEVEL": "WARNING",
+            "AICMD_FILE_LOG_LEVEL": "ERROR",
+            "AICMD_LOG_DIR": "/env/logs",
+        }
+
+        resolved = resolve_log_config(
+            cli_console_level="CRITICAL",
+            cli_file_level="WARNING",
+            cli_log_dir="/cli/logs",
+            env=env,
+            config=config,
+        )
+
+        assert resolved["console_level"] == "CRITICAL"
+        assert resolved["file_level"] == "WARNING"
+        assert resolved["log_dir"] == "/cli/logs"
+
+    def test_resolve_log_config_env_over_config(self):
+        """环境变量应覆盖配置文件"""
+        from aicmd.logger import resolve_log_config
+
+        config = {
+            "log_level": "INFO",
+            "file_log_level": "DEBUG",
+            "log_dir": "/config/logs",
+        }
+        env = {
+            "AICMD_LOG_LEVEL": "ERROR",
+            "AICMD_FILE_LOG_LEVEL": "WARNING",
+            "AICMD_LOG_DIR": "/env/logs",
+        }
+
+        resolved = resolve_log_config(env=env, config=config)
+
+        assert resolved["console_level"] == "ERROR"
+        assert resolved["file_level"] == "WARNING"
+        assert resolved["log_dir"] == "/env/logs"
+
+    def test_resolve_log_config_config_over_default(self):
+        """配置文件应覆盖默认值"""
+        from aicmd.logger import resolve_log_config
+
+        config = {
+            "log_level": "warning",
+            "file_log_level": "error",
+            "log_dir": "/config/logs",
+        }
+
+        resolved = resolve_log_config(env={}, config=config)
+
+        assert resolved["console_level"] == "WARNING"
+        assert resolved["file_level"] == "ERROR"
+        assert resolved["log_dir"] == "/config/logs"

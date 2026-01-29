@@ -56,5 +56,10 @@
     "show_confidence": false,
     "show_source": false,
     "colored_output": true
+  },
+  "logging": {
+    "log_level": "INFO",
+    "file_log_level": "DEBUG",
+    "log_dir": "~/.ai-cmd/logs"
   }
 }

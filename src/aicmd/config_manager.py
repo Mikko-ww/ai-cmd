@@ -44,6 +44,10 @@ class ConfigManager:
             "show_confidence": False,
             "show_source": False,
             "colored_output": True,
+            # 日志配置
+            "log_level": "INFO",
+            "file_log_level": "DEBUG",
+            "log_dir": "~/.ai-cmd/logs",
             # 哈希策略配置
             "hash_strategy": "simple",  # simple | normalized
             # 兼容性配置（旧版本）
@@ -162,6 +166,16 @@ class ConfigManager:
                     "show_confidence": display.get("show_confidence"),
                     "show_source": display.get("show_source"),
                     "colored_output": display.get("colored_output"),
+                }
+            )
+
+        if "logging" in json_config:
+            logging_config = json_config["logging"]
+            flattened.update(
+                {
+                    "log_level": logging_config.get("log_level"),
+                    "file_log_level": logging_config.get("file_log_level"),
+                    "log_dir": logging_config.get("log_dir"),
                 }
             )
 
@@ -285,6 +299,11 @@ class ConfigManager:
                 "show_confidence": False,
                 "show_source": False,
                 "colored_output": True,
+            },
+            "logging": {
+                "log_level": "INFO",
+                "file_log_level": "DEBUG",
+                "log_dir": "~/.ai-cmd/logs",
             },
         }
 
@@ -438,6 +457,11 @@ class ConfigManager:
                 "show_confidence",
                 "show_source",
                 "colored_output",
+            ],
+            "Logging Configuration": [
+                "log_level",
+                "file_log_level",
+                "log_dir",
             ],
         }
 

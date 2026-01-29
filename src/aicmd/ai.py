@@ -480,6 +480,21 @@ Examples:
             "--no-color", action="store_true", help="Disable colored output"
         )
         parser.add_argument(
+            "--log-level",
+            type=str,
+            help="Override console log level (e.g., DEBUG, INFO, WARNING, ERROR)",
+        )
+        parser.add_argument(
+            "--file-log-level",
+            type=str,
+            help="Override file log level (e.g., DEBUG, INFO, WARNING, ERROR)",
+        )
+        parser.add_argument(
+            "--log-dir",
+            type=str,
+            help="Override log directory (e.g., ~/.ai-cmd/logs)",
+        )
+        parser.add_argument(
             "--no-clipboard", action="store_true", help="Disable clipboard integration"
         )
         parser.add_argument(
@@ -544,6 +559,23 @@ Examples:
 
         # 解析命令行参数
         args = parser.parse_args()
+
+        # 配置日志（CLI > 环境变量 > 配置文件 > 默认值）
+        try:
+            config_for_logging = ConfigManager()
+            logger.configure(
+                log_dir=args.log_dir,
+                console_level=args.log_level,
+                file_level=args.file_log_level,
+                config={
+                    "log_level": config_for_logging.get("log_level"),
+                    "file_log_level": config_for_logging.get("file_log_level"),
+                    "log_dir": config_for_logging.get("log_dir"),
+                },
+                use_color=not args.no_color,
+            )
+        except Exception as e:
+            print(f"Warning: Failed to configure logger from config: {e}")
 
         # 处理配置显示
         if args.config:

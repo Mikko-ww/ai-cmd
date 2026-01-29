@@ -27,6 +27,43 @@ DEFAULT_BACKUP_COUNT = 5
 DEFAULT_LOG_DIR = "~/.ai-cmd/logs"
 
 
+def resolve_log_config(
+    cli_console_level: Optional[str] = None,
+    cli_file_level: Optional[str] = None,
+    cli_log_dir: Optional[str] = None,
+    env: Optional[Dict[str, str]] = None,
+    config: Optional[Dict[str, Any]] = None,
+) -> Dict[str, Any]:
+    """解析日志配置优先级：CLI 参数 > 环境变量 > 配置文件 > 默认值"""
+    env = os.environ if env is None else env
+    config = {} if config is None else config
+
+    console_level = (
+        cli_console_level
+        or env.get("AICMD_LOG_LEVEL")
+        or config.get("log_level")
+        or DEFAULT_LOG_LEVEL
+    )
+    file_level = (
+        cli_file_level
+        or env.get("AICMD_FILE_LOG_LEVEL")
+        or config.get("file_log_level")
+        or DEFAULT_FILE_LOG_LEVEL
+    )
+    log_dir = (
+        cli_log_dir
+        or env.get("AICMD_LOG_DIR")
+        or config.get("log_dir")
+        or DEFAULT_LOG_DIR
+    )
+
+    return {
+        "console_level": str(console_level).upper(),
+        "file_level": str(file_level).upper(),
+        "log_dir": log_dir,
+    }
+
+
 def get_log_level_from_env() -> str:
     """从环境变量获取日志级别"""
     return os.environ.get("AICMD_LOG_LEVEL", DEFAULT_LOG_LEVEL).upper()
@@ -149,6 +186,7 @@ class AICommandLogger:
         use_color: bool = True,
         console_level: Optional[str] = None,
         file_level: Optional[str] = None,
+        config: Optional[Dict[str, Any]] = None,
         max_bytes: int = DEFAULT_MAX_BYTES,
         backup_count: int = DEFAULT_BACKUP_COUNT,
         enable_json_file: bool = False
@@ -172,13 +210,16 @@ class AICommandLogger:
         # 清除现有handlers
         self.logger.handlers.clear()
         
-        # 使用环境变量或参数
-        console_level = console_level or get_log_level_from_env()
-        file_level = file_level or get_file_log_level_from_env()
-        
-        # 设置日志目录
-        if log_dir is None:
-            log_dir = os.environ.get("AICMD_LOG_DIR", DEFAULT_LOG_DIR)
+        # 按优先级解析日志配置
+        resolved = resolve_log_config(
+            cli_console_level=console_level,
+            cli_file_level=file_level,
+            cli_log_dir=log_dir,
+            config=config,
+        )
+        console_level = resolved["console_level"]
+        file_level = resolved["file_level"]
+        log_dir = resolved["log_dir"]
         self.log_dir = Path(log_dir).expanduser()
         self.log_dir.mkdir(parents=True, exist_ok=True)
         
@@ -484,6 +525,30 @@ class Logger:
     
     def __init__(self, use_color: bool = True):
         self._enhanced_logger = AICommandLogger(use_color=use_color)
+
+    def configure(
+        self,
+        *,
+        log_dir: Optional[str] = None,
+        use_color: bool = True,
+        console_level: Optional[str] = None,
+        file_level: Optional[str] = None,
+        config: Optional[Dict[str, Any]] = None,
+        max_bytes: int = DEFAULT_MAX_BYTES,
+        backup_count: int = DEFAULT_BACKUP_COUNT,
+        enable_json_file: bool = False
+    ):
+        """重新配置日志器（用于 CLI 覆盖）"""
+        self._enhanced_logger = AICommandLogger(
+            log_dir=log_dir,
+            use_color=use_color,
+            console_level=console_level,
+            file_level=file_level,
+            config=config,
+            max_bytes=max_bytes,
+            backup_count=backup_count,
+            enable_json_file=enable_json_file,
+        )
     
     def info(self, msg: str):
         self._enhanced_logger.info(msg)

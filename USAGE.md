@@ -32,6 +32,9 @@ CLI options
 - `--status`: Show cache and interaction statistics.
 - `--reset-errors`: Reset internal error state and re-enable cache if disabled.
 - `--no-color`: Disable colored output.
+- `--log-level LEVEL`: Override console log level (e.g., DEBUG, INFO, WARNING, ERROR).
+- `--file-log-level LEVEL`: Override file log level (e.g., DEBUG, INFO, WARNING, ERROR).
+- `--log-dir PATH`: Override log directory (e.g., `~/.ai-cmd/logs`).
 - `--no-clipboard`: Do not copy results to clipboard.
 - `--recalculate-confidence`: Recompute confidence scores for all cached entries.
 - `--json`: Output a JSON object instead of plain text.
@@ -87,6 +90,7 @@ Configuration
   - `cache`: `cache_directory`, `database_file`, `max_cache_age_days`, `cache_size_limit`
   - `interaction`: `interaction_timeout_seconds`, `positive_weight`, `negative_weight`, `similarity_threshold`, `confidence_threshold`
   - `display`: `colored_output`, `show_confidence`, `show_source`
+  - `logging`: `log_level`, `file_log_level`, `log_dir`
 
 Cache and confidence
 - Storage: SQLite at `~/.ai-cmd/cache.db` by default (configurable path and file).
@@ -144,4 +148,3 @@ Troubleshooting
 - Cache disabled after errors: `aicmd --reset-errors` and check logs under `~/.ai-cmd/logs/`.
 - Provider issues: use `aicmd --test-provider <provider>` to diagnose configuration problems.
 - Configuration validation: use `aicmd --validate-config` to check for configuration issues.
-
