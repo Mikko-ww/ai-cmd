@@ -96,8 +96,8 @@ class TestDefaultSystemPrompt:
         """测试提示词没有多余的前后空格"""
         prompt = AICMD_DEF_SYSTEM_PROMPT
         
-        # 提示词不应该以多个空格开头或结尾
-        assert prompt == prompt.strip() or prompt.startswith(" ") is False
+        # 提示词应该已经被 strip 过
+        assert prompt == prompt.strip(), "Prompt should not have leading or trailing whitespace"
 
     def test_prompt_has_complete_sentences(self):
         """测试提示词包含完整句子"""

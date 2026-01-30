@@ -396,8 +396,9 @@ class TestCacheHitMissIntegration:
             last_used=entry.last_used
         )
         
-        # 高确认次数应该有高置信度
-        assert confidence > 0.3  # 调整期望值以匹配实际行为
+        # 确认次数为 3，初始置信度约 0.3，每次确认增加约 0.2
+        # 预期置信度应该 > 0.6 (初始 0.3 + 3*0.2)
+        assert confidence > 0.6, f"Expected confidence > 0.6 for 3 confirmations, got {confidence}"
 
     def test_cache_miss_flow(self, mock_cache_manager):
         """测试缓存未命中的流程"""
@@ -632,9 +633,11 @@ class TestConfigurationEffects:
             calculator = ConfidenceCalculator(config_manager=config)
             thresholds = calculator.get_confidence_thresholds()
             
-            # 验证高阈值（根据实际返回的值调整期望）
-            assert thresholds["auto_copy_threshold"] >= 0.9
-            assert thresholds["confidence_threshold"] >= 0.85
+            # 验证配置生效（允许小的浮点误差）
+            assert abs(thresholds["auto_copy_threshold"] - 0.95) < 0.1, \
+                f"Expected auto_copy_threshold ≈ 0.95, got {thresholds['auto_copy_threshold']}"
+            assert abs(thresholds["confidence_threshold"] - 0.9) < 0.1, \
+                f"Expected confidence_threshold ≈ 0.9, got {thresholds['confidence_threshold']}"
 
 
 class TestErrorRecoveryIntegration:
@@ -676,18 +679,22 @@ class TestErrorRecoveryIntegration:
         from aicmd.error_handler import GracefulDegradationManager
         
         manager = GracefulDegradationManager()
+        error_count = 0
         
         # 记录多次错误（使用正确的方法）
         for i in range(5):
-            try:
+            def failing_operation():
                 raise Exception(f"Error {i}")
-            except Exception as e:
-                # 使用 with_cache_fallback 来触发错误记录
-                manager.with_cache_fallback(
-                    lambda: (_ for _ in ()).throw(e),
-                    lambda: None,
-                    f"test_operation_{i}"
-                )
+            
+            result = manager.with_cache_fallback(
+                failing_operation,
+                lambda: f"fallback_{i}",
+                f"test_operation_{i}"
+            )
+            
+            # 应该使用回退值
+            assert result == f"fallback_{i}"
+            error_count += 1
         
-        # 验证错误被记录（通过检查降级管理器的状态）
-        assert manager is not None
+        # 验证所有操作都使用了回退
+        assert error_count == 5

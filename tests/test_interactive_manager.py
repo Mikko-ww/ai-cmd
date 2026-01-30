@@ -256,14 +256,23 @@ class TestInteractiveManagerConfirmation:
             assert result == ConfirmationResult.REJECTED, f"Failed for: {response}"
 
     @patch("aicmd.interactive_manager.universal_input.input_with_timeout")
-    def test_prompt_user_confirmation_unrecognized_response(self, mock_input, interactive_manager):
-        """测试无法识别的响应（默认为 Yes）"""
+    def test_prompt_user_confirmation_unrecognized_response(self, mock_input, interactive_manager, capsys):
+        """测试无法识别的响应（默认为 Yes 以提供更好的用户体验）
+        
+        注意：这是有意的设计决策。虽然从安全角度来说，未识别的响应应该拒绝，
+        但为了用户体验，工具会提示用户并默认为 Yes。危险命令会通过
+        CommandSafetyChecker 强制确认。
+        """
         mock_input.return_value = "maybe"
         
         result, _ = interactive_manager.prompt_user_confirmation("ls", "API")
         
-        # 无法识别的响应应该默认确认
+        # 无法识别的响应应该默认确认，但会有警告提示
         assert result == ConfirmationResult.CONFIRMED
+        
+        # 验证有警告输出
+        captured = capsys.readouterr()
+        assert "Unrecognized" in captured.out or "unrecognized" in captured.out.lower()
 
 
 class TestInteractiveManagerDisplay:
