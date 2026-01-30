@@ -1,6 +1,5 @@
 import os
 import argparse
-import pyperclip
 from . import __version__, __author__, __email__
 from .error_handler import GracefulDegradationManager
 from .config_manager import ConfigManager
@@ -10,6 +9,7 @@ from .query_matcher import QueryMatcher
 from .interactive_manager import InteractiveManager, ConfirmationResult
 from .multi_provider_api_client import MultiProviderAPIClient
 from .safety_checker import CommandSafetyChecker
+from .clipboard_manager import ClipboardManager
 from .logger import logger
 
 # 全局错误处理管理器
@@ -72,17 +72,15 @@ def get_shell_command(
                     print(warning)
 
             # 复制到剪贴板（考虑安全和用户选择）
-            if not no_clipboard and not safety_info["disable_auto_copy"]:
-                try:
-                    pyperclip.copy(command)
-                    # 在非交互模式下显示复制确认
-                    print("✓ Copied to clipboard!")
-                except Exception as e:
-                    degradation_manager.logger.warning(
-                        f"Failed to copy to clipboard: {e}"
-                    )
-            elif safety_info["disable_auto_copy"]:
-                print("⚠️  Automatic clipboard copying disabled for safety reasons")
+            clipboard = ClipboardManager(logger=degradation_manager.logger)
+            copied, warning_msg = clipboard.get_copy_status_message(
+                command, no_clipboard, safety_info
+            )
+            if copied:
+                # 在非交互模式下显示复制确认
+                print("✓ Copied to clipboard!")
+            elif warning_msg:
+                print(warning_msg)
         return command
 
     # 初始化所有管理器
@@ -141,23 +139,11 @@ def get_shell_command(
                         print(warning)
                     print()
 
-                if not no_clipboard and not safety_info["disable_auto_copy"]:
-                    try:
-                        pyperclip.copy(command)
-                        interactive_manager.display_success_message(
-                            command, copied=True
-                        )
-                    except Exception as e:
-                        degradation_manager.logger.warning(
-                            f"Failed to copy to clipboard: {e}"
-                        )
-                        interactive_manager.display_success_message(
-                            command, copied=False
-                        )
-                else:
-                    interactive_manager.display_success_message(command, copied=False)
-                    if safety_info["disable_auto_copy"]:
-                        print("⚠️  Clipboard copying disabled for safety reasons")
+                clipboard = ClipboardManager(logger=degradation_manager.logger)
+                copied = clipboard.copy_command(command, no_clipboard, safety_info)
+                interactive_manager.display_success_message(command, copied=copied)
+                if not copied and clipboard.should_show_safety_warning(safety_info):
+                    print("⚠️  Clipboard copying disabled for safety reasons")
 
                 # 更新使用时间和隐式确认
                 try:
@@ -302,23 +288,11 @@ def get_shell_command(
 
             if confirmed:
                 # 用户确认，复制到剪贴板（考虑安全和用户选择）
-                if not no_clipboard and not safety_info["disable_auto_copy"]:
-                    try:
-                        pyperclip.copy(command)
-                        interactive_manager.display_success_message(
-                            command, copied=True
-                        )
-                    except Exception as e:
-                        degradation_manager.logger.warning(
-                            f"Failed to copy to clipboard: {e}"
-                        )
-                        interactive_manager.display_success_message(
-                            command, copied=False
-                        )
-                else:
-                    interactive_manager.display_success_message(command, copied=False)
-                    if safety_info["disable_auto_copy"]:
-                        print("⚠️  Clipboard copying disabled for safety reasons")
+                clipboard = ClipboardManager(logger=degradation_manager.logger)
+                copied = clipboard.copy_command(command, no_clipboard, safety_info)
+                interactive_manager.display_success_message(command, copied=copied)
+                if not copied and clipboard.should_show_safety_warning(safety_info):
+                    print("⚠️  Clipboard copying disabled for safety reasons")
             else:
                 # 用户拒绝
                 interactive_manager.display_rejection_message("Command not copied")
@@ -329,19 +303,11 @@ def get_shell_command(
         else:
             # 不需要确认，直接复制（考虑安全和用户选择）
             confirmed = True
-            if not no_clipboard and not safety_info["disable_auto_copy"]:
-                try:
-                    pyperclip.copy(command)
-                    interactive_manager.display_success_message(command, copied=True)
-                except Exception as e:
-                    degradation_manager.logger.warning(
-                        f"Failed to copy to clipboard: {e}"
-                    )
-                    interactive_manager.display_success_message(command, copied=False)
-            else:
-                interactive_manager.display_success_message(command, copied=False)
-                if safety_info["disable_auto_copy"]:
-                    print("⚠️  Clipboard copying disabled for safety reasons")
+            clipboard = ClipboardManager(logger=degradation_manager.logger)
+            copied = clipboard.copy_command(command, no_clipboard, safety_info)
+            interactive_manager.display_success_message(command, copied=copied)
+            if not copied and clipboard.should_show_safety_warning(safety_info):
+                print("⚠️  Clipboard copying disabled for safety reasons")
 
         # 保存到缓存（如果是新命令）
         if source == "API":
