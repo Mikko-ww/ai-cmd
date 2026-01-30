@@ -242,7 +242,7 @@ class ConfigManager:
     def _get_default_json_config(self):
         """获取默认JSON配置结构"""
         return {
-            "version": "1.0.1",
+            "version": "1.0.2",
             "description": "AI Command Line Tool Configuration",
             "_note": "API keys are now stored securely in system keyring. Use 'aicmd --set-api-key <provider> <key>' to configure.",
             "basic": {

@@ -63,7 +63,7 @@
 - 配置示例（节选）
 ```
 {
-  "version": "1.0.1",
+  "version": "1.0.2",
   "basic": {
     "interactive_mode": true,
     "cache_enabled": true,
