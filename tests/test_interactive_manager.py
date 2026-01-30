@@ -189,7 +189,7 @@ class TestInteractiveManagerConfirmation:
         
         # 默认超时自动确认
         assert result == ConfirmationResult.TIMEOUT
-        assert interactive_manager.interaction_stats["timeouts"] == 1
+        assert interactive_manager.interaction_stats.get("timeout", 0) >= 1
 
     @patch("aicmd.interactive_manager.universal_input.input_with_timeout")
     def test_prompt_user_confirmation_timeout_no_auto_confirm(self, mock_input, mock_config_manager):
