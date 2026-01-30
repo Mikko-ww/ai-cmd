@@ -8,6 +8,7 @@ from .confidence_calculator import ConfidenceCalculator
 from .interactive_manager import InteractiveManager, ConfirmationResult
 from .command_handler import CommandHandler
 from .logger import logger
+from .cli_commands import config_commands, cache_commands, provider_commands
 
 # 全局错误处理管理器
 degradation_manager = GracefulDegradationManager()
@@ -227,27 +228,29 @@ Examples:
 
         # 处理配置显示
         if args.config:
-            show_configuration()
+            config_commands.show_configuration(degradation_manager)
             return
 
         if args.show_config:
-            show_detailed_configuration()
+            config_commands.show_detailed_configuration()
             return
 
         if args.create_config:
-            create_user_configuration(is_force=False)
+            config_commands.create_user_configuration(is_force=False)
             return
 
         if args.create_config_force:
-            create_user_configuration(is_force=True)
+            config_commands.create_user_configuration(is_force=True)
             return
 
         if args.validate_config:
-            validate_configuration()
+            config_commands.validate_configuration()
             return
 
         if args.set_config:
-            set_configuration_value(args.set_config[0], args.set_config[1])
+            config_commands.set_configuration_value(
+                args.set_config[0], args.set_config[1], degradation_manager
+            )
             return
 
         # 处理特殊命令
@@ -257,40 +260,40 @@ Examples:
             return
 
         if args.status:
-            print_system_status()
+            cache_commands.print_system_status(degradation_manager)
             return
 
         if args.recalculate_confidence:
-            recalculate_all_confidence_command()
+            cache_commands.recalculate_all_confidence_command(degradation_manager)
             return
 
         if args.cleanup_cache:
-            cleanup_cache_command()
+            cache_commands.cleanup_cache_command(degradation_manager)
             return
 
         if args.list_providers:
-            list_providers_command()
+            provider_commands.list_providers_command()
             return
 
         if args.test_provider:
-            test_provider_command(args.test_provider)
+            provider_commands.test_provider_command(args.test_provider)
             return
 
         # API Key management commands
         if args.set_api_key:
-            set_api_key_command(args.set_api_key[0], args.set_api_key[1])
+            provider_commands.set_api_key_command(args.set_api_key[0], args.set_api_key[1])
             return
 
         if args.get_api_key:
-            get_api_key_command(args.get_api_key)
+            provider_commands.get_api_key_command(args.get_api_key)
             return
 
         if args.delete_api_key:
-            delete_api_key_command(args.delete_api_key)
+            provider_commands.delete_api_key_command(args.delete_api_key)
             return
 
         if args.list_api_keys:
-            list_api_keys_command()
+            provider_commands.list_api_keys_command()
             return
 
         # 检查是否有实际的查询
@@ -337,508 +340,6 @@ Examples:
                 f"System health status: Error count {status['error_count']}/{status['max_error_count']}"
             )
             print("Consider running with --reset-errors to reset error state.")
-
-
-def show_detailed_configuration():
-    """显示详细配置摘要"""
-    try:
-        config = ConfigManager()
-        config.print_config_summary()
-    except Exception as e:
-        print(f"Error displaying detailed configuration: {e}")
-
-
-def create_user_configuration(is_force=False):
-    """创建用户配置文件"""
-    try:
-        config = ConfigManager()
-        config_file = config.create_user_config(is_force=is_force)
-
-        if not config_file:
-            print("✗ Failed to create user configuration file.")
-
-        # if config_file:
-        #     print(f"✓ User configuration file created: {config_file}")
-        #     print("You can now edit this file to customize your settings.")
-        #     print("Run 'aicmd --show-config' to see the current configuration.")
-        # else:
-        #     print("✗ Failed to create user configuration file.")
-    except Exception as e:
-        print(f"Error creating user configuration: {e}")
-
-
-def set_configuration_value(key: str, value: str):
-    """设置配置值"""
-    try:
-        config = ConfigManager()
-
-        # 验证配置键是否存在于默认配置中
-        if not config.is_valid_config_key(key):
-            print(f"✗ Invalid configuration key: {key}")
-            print("Run 'aicmd --show-config' to see available configuration keys.")
-            return
-
-        # 转换值类型
-        converted_value = config.convert_config_value(key, value)
-        if converted_value is None:
-            print(f"✗ Invalid value '{value}' for key '{key}'")
-            return
-
-        # 设置配置值
-        success = config.set_config(key, converted_value)
-        if success:
-            print(f"✓ Configuration updated: {key} = {converted_value}")
-            print("Changes will take effect on next run.")
-        else:
-            print(f"✗ Failed to update configuration for key: {key}")
-
-    except Exception as e:
-        degradation_manager.logger.error(f"Set config failed: {e}")
-        print(f"✗ Failed to set configuration: {e}")
-
-
-def cleanup_cache_command():
-    """执行缓存清理命令"""
-    try:
-        from .database_manager import SafeDatabaseManager
-        from .config_manager import ConfigManager
-
-        print("=== Cleaning Up Cache ===")
-
-        config = ConfigManager()
-        db_manager = SafeDatabaseManager(config_manager=config)
-
-        if not db_manager.is_available:
-            print("✗ Database not available for cleanup")
-            return
-
-        deleted_count = db_manager.cleanup_old_entries()
-
-        if deleted_count > 0:
-            print(f"✓ Cache cleanup completed. Removed {deleted_count} entries.")
-        else:
-            print("ℹ No entries needed cleanup")
-
-    except Exception as e:
-        degradation_manager.logger.error(f"Cache cleanup failed: {e}")
-        print(f"✗ Failed to clean up cache: {e}")
-
-
-def recalculate_all_confidence_command():
-    """执行批量置信度重算命令"""
-    try:
-        from .cache_manager import CacheManager
-        from .confidence_calculator import ConfidenceCalculator
-        from .config_manager import ConfigManager
-
-        print("=== Recalculating Confidence Scores ===")
-
-        config = ConfigManager()
-        cache_manager = CacheManager(
-            config_manager=config, degradation_manager=degradation_manager
-        )
-        confidence_calc = ConfidenceCalculator(
-            config_manager=config,
-            cache_manager=cache_manager,
-            degradation_manager=degradation_manager,
-        )
-
-        updated_count = confidence_calc.recalculate_all_confidence()
-
-        if updated_count > 0:
-            print(f"✓ Successfully recalculated confidence for {updated_count} entries")
-        else:
-            print("ℹ No entries found to recalculate")
-
-    except Exception as e:
-        degradation_manager.logger.error(f"Confidence recalculation failed: {e}")
-        print(f"✗ Failed to recalculate confidence scores: {e}")
-
-
-def validate_configuration():
-    """验证当前配置"""
-    try:
-        config = ConfigManager()
-        validation_result = config.validate_config()
-
-        print("=== Configuration Validation ===")
-
-        if validation_result["errors"]:
-            print("Configuration Errors:")
-            for error in validation_result["errors"]:
-                print(f"  ✗ {error}")
-
-        if validation_result["warnings"]:
-            print("Configuration Warnings:")
-            for warning in validation_result["warnings"]:
-                print(f"  ⚠ {warning}")
-
-        if not validation_result["errors"] and not validation_result["warnings"]:
-            print("✓ Configuration is valid with no issues.")
-
-        print(
-            f"\nOverall Status: {'✗ Invalid' if validation_result['errors'] else '✓ Valid'}"
-        )
-
-    except Exception as e:
-        print(f"Error validating configuration: {e}")
-
-
-def show_configuration():
-    """显示当前配置信息"""
-    try:
-        from .keyring_manager import KeyringManager
-
-        config = ConfigManager()
-
-        print("=== AI Command Tool Configuration ===")
-        print(f"Version: {__version__}")
-        print(f"Author: {__author__}")
-
-        # 基本配置
-        print("\nBasic Configuration:")
-        print(f"  Interactive Mode: {config.get('interactive_mode', False)}")
-        print(f"  Cache Enabled: {config.get('cache_enabled', True)}")
-        print(f"  Auto Copy Threshold: {config.get('auto_copy_threshold', 0.9)}")
-        print(
-            f"  Manual Confirmation Threshold: {config.get('manual_confirmation_threshold', 0.8)}"
-        )
-
-        # API配置 - 从 keyring 读取 API keys
-        providers = config.get("providers", {})
-        default_provider = config.get("default_provider", "openrouter")
-
-        print("\nAPI Configuration:")
-        if providers:
-            print(f"  Default Provider: {default_provider}")
-            for provider_name, provider_config in providers.items():
-                # 从 keyring 获取 API key 状态
-                has_api_key = KeyringManager.has_api_key(provider_name)
-                model = provider_config.get("model", "")
-                print(f"  {provider_name}:")
-                print(
-                    f"    API Key: {'✓ Set (in keyring)' if has_api_key else '✗ Not set'}"
-                )
-                print(f"    Model: {model or 'Not set'}")
-        else:
-            print("  No providers configured")
-
-        # 缓存配置
-        print("\nCache Configuration:")
-        print(f"  Cache Directory: {config.get('cache_directory', '~/.ai-cmd')}")
-        print(f"  Database File: {config.get('database_file', 'cache.db')}")
-        print(f"  Max Cache Age (days): {config.get('max_cache_age_days', 30)}")
-
-        # 交互配置
-        print("\nInteraction Configuration:")
-        print(
-            f"  Interaction Timeout (seconds): {config.get('interaction_timeout_seconds', 10)}"
-        )
-        print(f"  Max Retries: {config.get('max_retries', 3)}")
-
-        # 系统状态
-        error_stats = degradation_manager.get_status()
-        print("\nSystem Status:")
-        print(
-            f"  Health Status: {'✓ Healthy' if degradation_manager.is_healthy() else '⚠ Degraded'}"
-        )
-        print(
-            f"  Error Count: {error_stats['error_count']}/{error_stats['max_error_count']}"
-        )
-        print(f"  Cache Available: {'✓' if error_stats['cache_available'] else '✗'}")
-        print(
-            f"  Database Available: {'✓' if error_stats['database_available'] else '✗'}"
-        )
-
-        # API Key 管理提示
-        print("\nAPI Key Management:")
-        print("  API keys are stored securely in system keyring")
-        print("  Use 'aicmd --set-api-key <provider> <key>' to configure")
-        print("  Use 'aicmd --list-api-keys' to see configured providers")
-
-    except Exception as e:
-        print(f"Error displaying configuration: {e}")
-
-
-def print_system_status():
-    """显示系统统计信息"""
-    try:
-        config = ConfigManager()
-
-        print("=== AI Command Tool Statistics ===")
-        print(f"Interactive Mode: {config.get('interactive_mode', False)}")
-        print(f"Cache Enabled: {config.get('cache_enabled', True)}")
-
-        # 缓存统计
-        try:
-            cache_manager = CacheManager(config, degradation_manager)
-            cache_stats = cache_manager.get_cache_stats()
-            print(f"\nCache Statistics:")
-            print(f"  Status: {cache_stats.get('status', 'unknown')}")
-            print(f"  Total Entries: {cache_stats.get('total_entries', 0)}")
-        except Exception as e:
-            print(f"\nCache Statistics: Error - {e}")
-
-        # 置信度统计
-        try:
-            cache_manager = CacheManager(config, degradation_manager)
-            confidence_calc = ConfidenceCalculator(
-                config, cache_manager, degradation_manager
-            )
-            conf_stats = confidence_calc.get_confidence_stats()
-            if conf_stats.get("status") == "available":
-                print(f"\nConfidence Statistics:")
-                print(
-                    f"  Average Confidence: {conf_stats.get('avg_confidence', 0):.3f}"
-                )
-                print(
-                    f"  Total Confirmations: {conf_stats.get('total_confirmations', 0)}"
-                )
-                print(f"  Total Rejections: {conf_stats.get('total_rejections', 0)}")
-                print(
-                    f"  High Confidence (≥0.9): {conf_stats.get('very_high_confidence_count', 0)}"
-                )
-                print(
-                    f"  Medium Confidence (0.8-0.9): {conf_stats.get('high_confidence_count', 0)}"
-                )
-        except Exception as e:
-            print(f"\nConfidence Statistics: Error - {e}")
-
-        # 交互统计
-        try:
-            interactive_manager = InteractiveManager(config, degradation_manager)
-            int_stats = interactive_manager.get_interaction_stats()
-            if int_stats.get("total_prompts", 0) > 0:
-                print(f"\nInteraction Statistics:")
-                print(f"  Total Prompts: {int_stats.get('total_prompts', 0)}")
-                print(
-                    f"  Confirmed: {int_stats.get('confirmed', 0)} ({int_stats.get('confirmed_percentage', 0)}%)"
-                )
-                print(
-                    f"  Rejected: {int_stats.get('rejected', 0)} ({int_stats.get('rejected_percentage', 0)}%)"
-                )
-                print(
-                    f"  Timeouts: {int_stats.get('timeouts', 0)} ({int_stats.get('timeouts_percentage', 0)}%)"
-                )
-            else:
-                print(f"\nInteraction Statistics: No interactions yet")
-        except Exception as e:
-            print(f"\nInteraction Statistics: Error - {e}")
-
-        # 错误处理统计
-        error_stats = degradation_manager.get_status()
-        print(f"\nError Handler Status:")
-        print(
-            f"  Health Status: {'Healthy' if degradation_manager.is_healthy() else 'Degraded'}"
-        )
-        print(
-            f"  Error Count: {error_stats['error_count']}/{error_stats['max_error_count']}"
-        )
-        print(f"  Cache Available: {error_stats['cache_available']}")
-        print(f"  Database Available: {error_stats['database_available']}")
-
-    except Exception as e:
-        print(f"Error displaying statistics: {e}")
-
-
-def list_providers_command():
-    """列出所有支持的LLM提供商"""
-    try:
-        from .llm_router import LLMRouter
-
-        router = LLMRouter()
-        providers = router.list_providers()
-        current_provider = router.get_current_provider()
-
-        print("=== Supported LLM Providers ===")
-        print(f"Current default provider: {current_provider}")
-        print("\nAvailable providers:")
-
-        for provider in providers:
-            marker = " (current)" if provider == current_provider else ""
-            print(f"  • {provider}{marker}")
-
-        print(f"\nTotal: {len(providers)} providers supported")
-        print("\nTo set a provider as default, use:")
-        print("  aicmd --set-config default_provider <provider_name>")
-        print("\nTo test a provider configuration, use:")
-        print("  aicmd --test-provider <provider_name>")
-
-    except Exception as e:
-        print(f"Error listing providers: {e}")
-
-
-def test_provider_command(provider_name: str):
-    """测试指定提供商的配置"""
-    try:
-        from .llm_router import LLMRouter
-
-        router = LLMRouter()
-        supported_providers = router.list_providers()
-
-        if provider_name not in supported_providers:
-            print(f"✗ Unknown provider: {provider_name}")
-            print(f"Supported providers: {', '.join(supported_providers)}")
-            return
-
-        print(f"=== Testing Provider: {provider_name} ===")
-
-        validation_result = router.validate_provider_config(provider_name)
-
-        if validation_result["valid"]:
-            print("✓ Provider configuration is valid")
-            config = validation_result["config"]
-            print(f"  API Key: {config['api_key']}")
-            print(f"  Model: {config['model']}")
-            print(f"  Base URL: {config['base_url']}")
-
-            # Try a simple test request
-            print("\nTesting API connection...")
-            try:
-                result = router.send_chat("echo hello", provider_name=provider_name)
-                if result and not result.startswith("Error:"):
-                    print("✓ API connection successful")
-                    print(f"Response: {result[:50]}{'...' if len(result) > 50 else ''}")
-                else:
-                    print(f"✗ API test failed: {result}")
-            except Exception as api_e:
-                print(f"✗ API test failed: {api_e}")
-
-        else:
-            print("✗ Provider configuration is invalid")
-            if "error" in validation_result:
-                print(f"Error: {validation_result['error']}")
-            if "issues" in validation_result:
-                print("Issues:")
-                for issue in validation_result["issues"]:
-                    print(f"  • {issue}")
-
-        print(f"\nTo configure {provider_name}:")
-        print(f"  1. Set API key: aicmd --set-api-key {provider_name} <your_api_key>")
-        print(
-            f"  2. Edit config file to set model: aicmd --set-config providers.{provider_name}.model <model_name>"
-        )
-
-    except Exception as e:
-        print(f"Error testing provider: {e}")
-
-
-def set_api_key_command(provider: str, api_key: str):
-    """设置提供商的 API Key"""
-    try:
-        from .keyring_manager import KeyringManager
-        from .llm_router import LLMRouter
-
-        router = LLMRouter()
-        supported_providers = router.list_providers()
-
-        if provider not in supported_providers:
-            print(f"✗ Unknown provider: {provider}")
-            print(f"Supported providers: {', '.join(supported_providers)}")
-            return
-
-        success = KeyringManager.set_api_key(provider, api_key)
-
-        if success:
-            print(f"✓ API key set successfully for provider: {provider}")
-            print(f"  The key is stored securely in your system keyring")
-            print(f"\nNext steps:")
-            print(
-                f"  1. Set this as default provider: aicmd --set-config default_provider {provider}"
-            )
-            print(
-                f"  2. Configure model: aicmd --set-config providers.{provider}.model <model_name>"
-            )
-            print(f"  3. Test the configuration: aicmd --test-provider {provider}")
-        else:
-            print(f"✗ Failed to set API key for provider: {provider}")
-
-    except Exception as e:
-        print(f"Error setting API key: {e}")
-
-
-def get_api_key_command(provider: str):
-    """检查提供商是否已设置 API Key"""
-    try:
-        from .keyring_manager import KeyringManager
-        from .llm_router import LLMRouter
-
-        router = LLMRouter()
-        supported_providers = router.list_providers()
-
-        if provider not in supported_providers:
-            print(f"✗ Unknown provider: {provider}")
-            print(f"Supported providers: {', '.join(supported_providers)}")
-            return
-
-        api_key = KeyringManager.get_api_key(provider)
-
-        if api_key:
-            # 显示前10字符，key小于 10 则显示前三个
-            masked_key_len = 10 if len(api_key) > 10 else 3
-            if len(api_key) > masked_key_len:
-                masked_key = api_key[:masked_key_len] + "*" * (len(api_key) - masked_key_len)
-            else:
-                masked_key = "*" * len(api_key)
-
-            print(f"✓ API key is configured for provider: {provider}")
-            print(f"  Key preview: {masked_key}")
-        else:
-            print(f"✗ No API key configured for provider: {provider}")
-            print(f"  Use: aicmd --set-api-key {provider} <your_api_key>")
-
-    except Exception as e:
-        print(f"Error checking API key: {e}")
-
-
-def delete_api_key_command(provider: str):
-    """删除提供商的 API Key"""
-    try:
-        from .keyring_manager import KeyringManager
-        from .llm_router import LLMRouter
-
-        router = LLMRouter()
-        supported_providers = router.list_providers()
-
-        if provider not in supported_providers:
-            print(f"✗ Unknown provider: {provider}")
-            print(f"Supported providers: {', '.join(supported_providers)}")
-            return
-
-        success = KeyringManager.delete_api_key(provider)
-
-        if success:
-            print(f"✓ API key deleted for provider: {provider}")
-        else:
-            print(f"⚠ No API key found for provider: {provider}")
-
-    except Exception as e:
-        print(f"Error deleting API key: {e}")
-
-
-def list_api_keys_command():
-    """列出所有已配置 API Key 的提供商"""
-    try:
-        from .keyring_manager import KeyringManager
-
-        providers_with_keys = KeyringManager.list_providers_with_keys()
-
-        print("=== Configured API Keys ===")
-
-        if providers_with_keys:
-            print(f"Providers with API keys configured:")
-            for provider in providers_with_keys:
-                print(f"  ✓ {provider}")
-            print(f"\nTotal: {len(providers_with_keys)} provider(s)")
-        else:
-            print("No API keys configured yet")
-            print("\nTo set an API key:")
-            print("  aicmd --set-api-key <provider> <your_api_key>")
-            print("\nSupported providers:")
-            print("  openrouter, openai, deepseek, xai, gemini, qwen")
-
-    except Exception as e:
-        print(f"Error listing API keys: {e}")
 
 
 if __name__ == "__main__":
