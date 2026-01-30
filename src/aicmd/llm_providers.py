@@ -126,152 +126,118 @@ class LLMProvider(ABC):
             self._session = None
 
 
-class OpenRouterProvider(LLMProvider):
+class OpenAICompatibleProvider(LLMProvider):
+    """
+    OpenAI-compatible API provider base class.
+    
+    Implements common functionality for providers that follow the OpenAI API format:
+    - OpenRouter
+    - OpenAI
+    - DeepSeek
+    - xAI (Grok)
+    """
+    
+    @abstractmethod
+    def get_provider_name(self) -> str:
+        """Return the provider name for keyring lookup"""
+        pass
+    
+    @abstractmethod
+    def get_default_model(self) -> str:
+        """Return the default model name"""
+        pass
+    
+    @abstractmethod
+    def get_default_base_url(self) -> str:
+        """Return the default base URL"""
+        pass
+    
+    def get_api_key(self) -> str:
+        """Get API key from keyring"""
+        return KeyringManager.get_api_key(self.get_provider_name()) or ""
+    
+    def get_model(self) -> str:
+        """Get model from config or use default"""
+        return self.config.get("model", self.get_default_model())
+    
+    def get_base_url(self) -> str:
+        """Get base URL from config or use default"""
+        return self.config.get("base_url") or self.get_default_base_url()
+    
+    def build_request_payload(
+        self, prompt: str, model: Optional[str] = None
+    ) -> Dict[str, Any]:
+        """Build standard OpenAI-format request payload"""
+        return {
+            "model": model or self.get_model(),
+            "messages": [
+                {
+                    "role": "system",
+                    "content": get_system_prompt("default"),
+                },
+                {"role": "user", "content": prompt},
+            ],
+        }
+    
+    def parse_response(self, response: requests.Response) -> str:
+        """Parse standard OpenAI-format response"""
+        try:
+            result = response.json()
+            return result["choices"][0]["message"]["content"].strip()
+        except (KeyError, IndexError, ValueError) as e:
+            raise APIClientError(f"Invalid API response format: {e}")
+
+
+class OpenRouterProvider(OpenAICompatibleProvider):
     """OpenRouter 提供商实现"""
-
-    def get_api_key(self) -> str:
-        # 从 keyring 获取 API key，配置文件中的 api_key 不再使用
-        return KeyringManager.get_api_key("openrouter") or ""
-
-    def get_model(self) -> str:
-        return self.config.get("model", "")
-
-    def get_base_url(self) -> str:
-        return (
-            self.config.get("base_url")
-            or "https://openrouter.ai/api/v1/chat/completions"
-        )
-
-    def build_request_payload(
-        self, prompt: str, model: Optional[str] = None
-    ) -> Dict[str, Any]:
-        return {
-            "model": model or self.get_model(),
-            "messages": [
-                {
-                    "role": "system",
-                    "content": get_system_prompt("default"),
-                },
-                {"role": "user", "content": prompt},
-            ],
-        }
-
-    def parse_response(self, response: requests.Response) -> str:
-        try:
-            result = response.json()
-            return result["choices"][0]["message"]["content"].strip()
-        except (KeyError, IndexError, ValueError) as e:
-            raise APIClientError(f"Invalid API response format: {e}")
+    
+    def get_provider_name(self) -> str:
+        return "openrouter"
+    
+    def get_default_model(self) -> str:
+        return ""
+    
+    def get_default_base_url(self) -> str:
+        return "https://openrouter.ai/api/v1/chat/completions"
 
 
-class OpenAIProvider(LLMProvider):
+class OpenAIProvider(OpenAICompatibleProvider):
     """OpenAI 提供商实现"""
-
-    def get_api_key(self) -> str:
-        # 从 keyring 获取 API key，配置文件中的 api_key 不再使用
-        return KeyringManager.get_api_key("openai") or ""
-
-    def get_model(self) -> str:
-        return self.config.get("model", "gpt-3.5-turbo")
-
-    def get_base_url(self) -> str:
-        return (
-            self.config.get("base_url") or "https://api.openai.com/v1/chat/completions"
-        )
-
-    def build_request_payload(
-        self, prompt: str, model: Optional[str] = None
-    ) -> Dict[str, Any]:
-        return {
-            "model": model or self.get_model(),
-            "messages": [
-                {
-                    "role": "system",
-                    "content": get_system_prompt("default"),
-                },
-                {"role": "user", "content": prompt},
-            ],
-        }
-
-    def parse_response(self, response: requests.Response) -> str:
-        try:
-            result = response.json()
-            return result["choices"][0]["message"]["content"].strip()
-        except (KeyError, IndexError, ValueError) as e:
-            raise APIClientError(f"Invalid API response format: {e}")
+    
+    def get_provider_name(self) -> str:
+        return "openai"
+    
+    def get_default_model(self) -> str:
+        return "gpt-3.5-turbo"
+    
+    def get_default_base_url(self) -> str:
+        return "https://api.openai.com/v1/chat/completions"
 
 
-class DeepSeekProvider(LLMProvider):
+class DeepSeekProvider(OpenAICompatibleProvider):
     """DeepSeek 提供商实现"""
-
-    def get_api_key(self) -> str:
-        # 从 keyring 获取 API key，配置文件中的 api_key 不再使用
-        return KeyringManager.get_api_key("deepseek") or ""
-
-    def get_model(self) -> str:
-        return self.config.get("model", "deepseek-chat")
-
-    def get_base_url(self) -> str:
-        return (
-            self.config.get("base_url")
-            or "https://api.deepseek.com/v1/chat/completions"
-        )
-
-    def build_request_payload(
-        self, prompt: str, model: Optional[str] = None
-    ) -> Dict[str, Any]:
-        return {
-            "model": model or self.get_model(),
-            "messages": [
-                {
-                    "role": "system",
-                    "content": get_system_prompt("default"),
-                },
-                {"role": "user", "content": prompt},
-            ],
-        }
-
-    def parse_response(self, response: requests.Response) -> str:
-        try:
-            result = response.json()
-            return result["choices"][0]["message"]["content"].strip()
-        except (KeyError, IndexError, ValueError) as e:
-            raise APIClientError(f"Invalid API response format: {e}")
+    
+    def get_provider_name(self) -> str:
+        return "deepseek"
+    
+    def get_default_model(self) -> str:
+        return "deepseek-chat"
+    
+    def get_default_base_url(self) -> str:
+        return "https://api.deepseek.com/v1/chat/completions"
 
 
-class XAIProvider(LLMProvider):
+class XAIProvider(OpenAICompatibleProvider):
     """xAI (Grok) 提供商实现"""
-
-    def get_api_key(self) -> str:
-        # 从 keyring 获取 API key，配置文件中的 api_key 不再使用
-        return KeyringManager.get_api_key("xai") or ""
-
-    def get_model(self) -> str:
-        return self.config.get("model", "grok-beta")
-
-    def get_base_url(self) -> str:
-        return self.config.get("base_url") or "https://api.x.ai/v1/chat/completions"
-
-    def build_request_payload(
-        self, prompt: str, model: Optional[str] = None
-    ) -> Dict[str, Any]:
-        return {
-            "model": model or self.get_model(),
-            "messages": [
-                {
-                    "role": "system",
-                    "content": get_system_prompt("default"),
-                },
-                {"role": "user", "content": prompt},
-            ],
-        }
-
-    def parse_response(self, response: requests.Response) -> str:
-        try:
-            result = response.json()
-            return result["choices"][0]["message"]["content"].strip()
-        except (KeyError, IndexError, ValueError) as e:
-            raise APIClientError(f"Invalid API response format: {e}")
+    
+    def get_provider_name(self) -> str:
+        return "xai"
+    
+    def get_default_model(self) -> str:
+        return "grok-beta"
+    
+    def get_default_base_url(self) -> str:
+        return "https://api.x.ai/v1/chat/completions"
 
 
 class GeminiProvider(LLMProvider):
