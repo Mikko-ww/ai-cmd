@@ -1,10 +1,11 @@
 # Repository Guidelines
 
 ## Project Structure & Module Organization
-- `src/aicmd/`: Core package (CLI in `ai.py`; config, cache, database, interaction, logging utilities; `setting_template.json`).
+- `src/aicmd/`: Core package (CLI in `ai.py`; LLM providers in `llm_providers.py`/`llm_router.py`; config, cache, database, interaction, logging utilities; `setting_template.json`).
 - `pyproject.toml`: Packaging, console script entry (`aicmd`), dev deps.
 - Docs: `README.md`, `USAGE.md`.
 - Config/Cache: user config `~/.ai-cmd/settings.json`; project config `.ai-cmd.json`; cache DB `~/.ai-cmd/cache.db`.
+- API Keys: **系统 keyring 存储**（非配置文件），服务名 `com.aicmd.ww`。
 
 ## Build, Test, and Development Commands
 - Install deps: `uv sync`
@@ -12,6 +13,16 @@
 - Run CLI: `aicmd "list all files"` (or `uv run aicmd ...`)
 - Lint/format: `uv run black src/` · `uv run flake8 src/`
 - Tests: `uv run python -m pytest`
+
+### Multi-Provider LLM Commands
+```bash
+aicmd --list-providers                # 列出支持的提供商 (openrouter/openai/deepseek/xai/gemini/qwen)
+aicmd --test-provider <name>          # 测试提供商连接
+aicmd --set-api-key <provider> <key>  # 设置 API Key (存入 keyring)
+aicmd --get-api-key <provider>        # 检查 Key 状态 (仅显示前 10 字符)
+aicmd --delete-api-key <provider>     # 删除 API Key
+aicmd --list-api-keys                 # 列出已配置的提供商
+```
 
 ## Coding Style & Naming Conventions
 - Python 3.9+, 4‑space indent; format with Black; lint with Flake8.
@@ -22,13 +33,15 @@
 ## Testing Guidelines
 - Framework: `pytest`. Place tests under `tests/`, mirroring `aicmd` structure; files named `test_*.py`.
 - Isolate external effects: mock `requests.Session.post`, environment variables, and clipboard; use temp dirs for cache (`~/.ai-cmd`) and project configs.
-- **Keyring Isolation**: Always set `AICMD_KEYRING_SERVICE="com.aicmd.ww.test"` in test environment to avoid polluting production keyring data. Add to `tests/conftest.py`:
+- **Keyring Isolation**: Always set `AICMD_KEYRING_SERVICE="com.aicmd.ww.test"` in test environment to avoid polluting production keyring data. This is configured in `tests/conftest.py`:
   ```python
   @pytest.fixture(scope="session", autouse=True)
   def setup_test_environment():
       os.environ["AICMD_KEYRING_SERVICE"] = "com.aicmd.ww.test"
       yield
   ```
+- Available test fixtures: `temp_dir`, `temp_config_dir`, `temp_db_path`, `sample_config`, `mock_config_manager`, `mock_database_manager`, `mock_cache_manager`.
+- Test markers: `@pytest.mark.slow`, `@pytest.mark.integration`, `@pytest.mark.unit`.
 - Run locally with `uv run python -m pytest` before opening a PR.
 
 ## Commit & Pull Request Guidelines

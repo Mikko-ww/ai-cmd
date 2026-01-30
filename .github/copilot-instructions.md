@@ -2,95 +2,74 @@
 
 ## Project Architecture
 
-This is an intelligent CLI tool that converts natural language to shell commands using OpenRouter API, with sophisticated caching and user interaction features.
+智能 CLI 工具：将自然语言转换为 shell 命令，支持 6 个 LLM 提供商（openrouter/openai/deepseek/xai/gemini/qwen），具备缓存、置信度评分和用户交互功能。
 
-### Core Architecture Pattern
-- **Graceful Degradation**: All enhanced features (caching, confidence scoring, user interaction) wrap around the basic API functionality in `get_shell_command_original()`. Any failure in enhanced features automatically falls back to basic mode.
-- **Multi-layer Configuration**: Environment variables > JSON config files > defaults, with validation and type conversion throughout.
-- **Database-backed Caching**: SQLite with cross-platform safety, confidence scoring, and similarity matching for query optimization.
+### 核心架构模式
+- **优雅降级**：所有增强功能（缓存、置信度、交互）包装在 `get_shell_command_original()` 周围，任何失败自动降级到基础模式
+- **多层配置**：CLI 参数 > 环境变量 `AI_CMD_*` > JSON 配置 > 默认值
+- **多提供商路由**：`LLMRouter` → `LLMProvider` 抽象基类 → 具体提供商实现
 
-### Key Components
+### 关键组件
 
-**Primary Flow (`ai.py`)**: 
-- `get_shell_command()` orchestrates all components with fallback to `get_shell_command_original()`
-- Interactive vs non-interactive modes change behavior significantly
-- Confidence thresholds determine auto-copy vs user confirmation
+| 文件 | 职责 |
+|------|------|
+| [ai.py](src/aicmd/ai.py) | CLI 入口、主编排流程 |
+| [llm_providers.py](src/aicmd/llm_providers.py) | 6 个 LLM 提供商实现 |
+| [llm_router.py](src/aicmd/llm_router.py) | 提供商路由与回退 |
+| [keyring_manager.py](src/aicmd/keyring_manager.py) | API Key 系统级安全存储 |
+| [config_manager.py](src/aicmd/config_manager.py) | 多源配置加载 |
+| [error_handler.py](src/aicmd/error_handler.py) | `GracefulDegradationManager` 错误管理 |
 
-**Configuration (`config_manager.py`)**:
-- Nested JSON structure in `setting_template.json` flattened to simple keys
-- User config: `~/.ai-cmd/settings.json`, Project config: `.ai-cmd.json`
-- Environment variables use `AI_CMD_*` prefix
+### API Key 管理（安全关键）
+- **必须使用 keyring**：`aicmd --set-api-key <provider> <key>` 存入系统钥匙串
+- **配置文件 `api_key` 已废弃**：仅保留 `model`/`base_url` 字段
+- **服务名隔离**：通过 `AICMD_KEYRING_SERVICE` 环境变量切换（测试用 `com.aicmd.ww.test`）
 
-**Caching System**:
-- `cache_manager.py`: CRUD operations with `CacheEntry` model
-- `database_manager.py`: Thread-safe SQLite with graceful degradation
-- `confidence_calculator.py`: Bayesian-style scoring with time decay
-- `query_matcher.py`: Semantic similarity for fuzzy matching
+## Development Commands
 
-## Development Workflows
-
-### Essential Commands
 ```bash
-uv sync                              # Install/sync dependencies
-uv pip install -e .                  # Editable install
-aicmd "list files" --force-api       # Test basic functionality
-aicmd --status                       # Debug cache/confidence stats
-aicmd --create-config                # Generate user config
+uv sync                                    # 安装依赖
+uv pip install -e .                        # 可编辑安装
+uv run python -m pytest                    # 运行测试
+uv run black src/ && uv run flake8 src/    # 格式化 + lint
 ```
 
-### Testing Strategy
-- No formal test suite currently exists
-- Manual testing uses `--force-api`, `--disable-interactive`, `--status` flags
-- Cache debugging with `--recalculate-confidence`, `--cleanup-cache`
-- Configuration validation with `--validate-config`, `--show-config`
+### 调试命令
+```bash
+aicmd --list-providers                # 查看支持的提供商
+aicmd --test-provider openai          # 测试提供商配置
+aicmd --show-config                   # 查看生效配置
+aicmd --status                        # 缓存/置信度统计
+aicmd "list files" --force-api        # 绕过缓存测试 API
+```
 
-### Configuration Debugging
-Interactive mode behavior changes dramatically based on thresholds:
-- `auto_copy_threshold` (0.9): Auto-copy without confirmation
-- `confidence_threshold` (0.8): Minimum for cache usage
-- `similarity_threshold` (0.7): Fuzzy matching cutoff
+## 测试规范
 
-## Project-Specific Patterns
+- 框架：`pytest`，测试文件在 `tests/test_*.py`
+- **Keyring 隔离必须**：`conftest.py` 设置 `AICMD_KEYRING_SERVICE="com.aicmd.ww.test"`
+- Mock 对象：使用 `mock_config_manager`、`mock_database_manager`、`mock_cache_manager` fixture
+- 脚本位置：测试脚本放 `./tmp/` 目录，禁止使用 `/tmp/`
 
-### Error Handling Philosophy
-Every enhanced feature uses `GracefulDegradationManager` to ensure the basic API functionality always works. Never let caching/interaction failures break core functionality.
+## 项目特定模式
 
-### Database Schema Awareness
-The SQLite schema includes OS/shell context fields for cross-platform compatibility. Hash strategies ("simple" vs "normalized") affect query matching behavior.
+### 错误处理
+- 所有增强功能使用 `GracefulDegradationManager.with_cache_fallback()`
+- 异常层级见 [exceptions.py](src/aicmd/exceptions.py)：`AICmdException` → 分类子异常
+- 错误计数超限（默认 3）自动禁用缓存
 
-### Safety System
-`CommandSafetyChecker` integrates with confidence scoring - dangerous commands force confirmation even with high confidence scores. Auto-clipboard copying can be disabled for security.
+### 安全系统
+- `CommandSafetyChecker` 与置信度评分集成
+- 危险命令强制确认，即使高置信度
 
-### Confidence Scoring Logic
-- Time-based decay of confidence over time
-- Positive/negative feedback weights from user confirmations
-- Combined with similarity scores for fuzzy matches
-- Recalculation affects entire cache when algorithm changes
+### 配置阈值
+| 配置项 | 默认值 | 作用 |
+|--------|--------|------|
+| `auto_copy_threshold` | 0.9 | 高置信度自动复制 |
+| `confidence_threshold` | 0.8 | 使用缓存最低置信度 |
+| `similarity_threshold` | 0.7 | 模糊匹配截断 |
 
-## Integration Points
+## 关键参考文件
 
-### OpenRouter API Client
-- Supports primary/backup models via environment variables
-- Custom base URLs for proxy/testing scenarios
-- Fallback model switching on API failures
-
-### Cross-platform Input Handling
-`cross_platform_input.py` provides timeout-based user input across Windows/Unix systems for interactive confirmation prompts.
-
-### Clipboard Integration
-Automatic clipboard copying with safety override - uses `pyperclip` with graceful degradation on clipboard failures.
-
-## Key Files for Understanding
-
-- `src/aicmd/ai.py`: Main orchestration and CLI entry point
-- `src/aicmd/setting_template.json`: Complete configuration structure reference
-- `src/aicmd/config_manager.py`: Multi-source configuration loading logic
-- `src/aicmd/cache_manager.py`: Database interaction patterns and CacheEntry model
-- `AGENTS.md`: Comprehensive development guidelines and workflow details
-
-## Common Debugging Approaches
-
-1. **Configuration Issues**: Use `aicmd --show-config` to see effective configuration and sources
-2. **Cache Problems**: Check `aicmd --status` for database availability and confidence statistics
-3. **API Issues**: Test with `--force-api` to bypass all caching layers
-4. **Interactive Behavior**: Use `--disable-interactive` to isolate interaction-related issues
+- [setting_template.json](src/aicmd/setting_template.json)：完整配置结构（版本 1.0.2）
+- [AGENTS.md](AGENTS.md)：开发规范与工作流详情
+- [conftest.py](tests/conftest.py)：测试 fixture 模式
