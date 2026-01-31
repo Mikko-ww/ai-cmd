@@ -123,12 +123,13 @@ class TestConfidenceCalculator:
         
         calculator = ConfidenceCalculator()
         
-        # 默认 auto_copy_threshold = 1.0（来自 setting_template.json）
-        # 只有满分才会自动复制
+        # 默认 auto_copy_threshold = 0.9（来自 ConfigManager 默认配置）
+        # 高于或等于阈值应该自动复制
         assert calculator.should_auto_copy(1.0) is True
+        assert calculator.should_auto_copy(0.95) is True
+        assert calculator.should_auto_copy(0.9) is True
         
         # 低于阈值不应该自动复制
-        assert calculator.should_auto_copy(0.95) is False
         assert calculator.should_auto_copy(0.85) is False
         assert calculator.should_auto_copy(0.5) is False
 
@@ -138,18 +139,18 @@ class TestConfidenceCalculator:
         
         calculator = ConfidenceCalculator()
         
-        # 默认 confidence_threshold=0.75, auto_copy_threshold=1.0
+        # 默认 confidence_threshold=0.8, auto_copy_threshold=0.9
         # 在两者之间应该询问确认
         assert calculator.should_ask_confirmation(0.85) is True
         assert calculator.should_ask_confirmation(0.80) is True
-        assert calculator.should_ask_confirmation(0.95) is True  # 0.75 <= 0.95 < 1.0
         
-        # 达到或超过 auto_copy_threshold (1.0) 不需要询问
+        # 达到或超过 auto_copy_threshold (0.9) 不需要询问
+        assert calculator.should_ask_confirmation(0.95) is False
         assert calculator.should_ask_confirmation(1.0) is False
         
-        # 低于 confidence_threshold (0.75) 也不需要询问（会使用 API）
+        # 低于 confidence_threshold (0.8) 也不需要询问（会使用 API）
         assert calculator.should_ask_confirmation(0.5) is False
-        assert calculator.should_ask_confirmation(0.74) is False
+        assert calculator.should_ask_confirmation(0.79) is False
 
     def test_should_use_cache(self):
         """测试缓存使用判断"""
@@ -157,14 +158,14 @@ class TestConfidenceCalculator:
         
         calculator = ConfidenceCalculator()
         
-        # 默认 confidence_threshold = 0.75（来自 setting_template.json）
+        # 默认 confidence_threshold = 0.8（来自 ConfigManager 默认配置）
         # 高于或等于阈值应该使用缓存
         assert calculator.should_use_cache(0.85) is True
         assert calculator.should_use_cache(0.90) is True
-        assert calculator.should_use_cache(0.75) is True  # 等于阈值
+        assert calculator.should_use_cache(0.80) is True  # 等于阈值
         
         # 低于阈值不应该使用缓存
-        assert calculator.should_use_cache(0.74) is False
+        assert calculator.should_use_cache(0.79) is False
         assert calculator.should_use_cache(0.5) is False
 
     def test_get_confidence_thresholds(self):

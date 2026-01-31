@@ -270,17 +270,34 @@ class CacheManager:
             cache_operation, fallback_operation, "get_cache_stats"
         )
 
-    def get_all_cached_queries(self) -> List[Tuple[str, str]]:
-        """获取所有缓存查询，用于相似性匹配"""
+    def get_all_cached_queries(self, limit: Optional[int] = None) -> List[Tuple[str, str]]:
+        """
+        获取所有缓存查询，用于相似性匹配
+        
+        Args:
+            limit: 可选的结果数量限制，用于性能优化。默认返回所有结果。
+                   建议值：500-1000，仅查询最近使用的条目
+        
+        Returns:
+            查询和命令的元组列表
+        """
 
         def cache_operation():
             if not self.db.is_available:
                 return []
 
-            select_sql = (
-                "SELECT query, command FROM enhanced_cache ORDER BY last_used DESC"
-            )
-            result = self.db.execute_query(select_sql, fetch=True)
+            # 使用 LIMIT 优化大缓存场景下的查询性能
+            if limit and limit > 0:
+                select_sql = (
+                    "SELECT query, command FROM enhanced_cache "
+                    "ORDER BY last_used DESC LIMIT ?"
+                )
+                result = self.db.execute_query(select_sql, (limit,), fetch=True)
+            else:
+                select_sql = (
+                    "SELECT query, command FROM enhanced_cache ORDER BY last_used DESC"
+                )
+                result = self.db.execute_query(select_sql, fetch=True)
 
             if result and isinstance(result, list):
                 return [(row[0], row[1]) for row in result]

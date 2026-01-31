@@ -237,3 +237,110 @@ class TestQueryMatcher:
         assert "stop_words" in stats
         assert stats["synonym_groups"] > 0
         assert stats["stop_words"] > 0
+
+
+class TestQueryMatcherPerformance:
+    """测试查询匹配器的性能优化功能"""
+    
+    def test_precompute_normalized_queries(self):
+        """测试预计算标准化查询"""
+        from aicmd.query_matcher import QueryMatcher
+        
+        matcher = QueryMatcher()
+        
+        # 预计算一些查询
+        queries = ["list all files", "show directories", "create new folder"]
+        matcher.precompute_normalized_queries(queries)
+        
+        # 验证缓存已创建
+        assert len(matcher._normalized_cache) == 3
+        
+        # 验证缓存内容正确
+        for query in queries:
+            assert query in matcher._normalized_cache
+            assert isinstance(matcher._normalized_cache[query], set)
+    
+    def test_clear_normalized_cache(self):
+        """测试清空预计算缓存"""
+        from aicmd.query_matcher import QueryMatcher
+        
+        matcher = QueryMatcher()
+        
+        # 预计算查询
+        matcher.precompute_normalized_queries(["test query"])
+        assert len(matcher._normalized_cache) > 0
+        
+        # 清空缓存
+        matcher.clear_normalized_cache()
+        assert len(matcher._normalized_cache) == 0
+    
+    def test_find_similar_queries_with_fast_filter(self):
+        """测试优化后的相似查询查找（带快速过滤）"""
+        from aicmd.query_matcher import QueryMatcher
+        
+        matcher = QueryMatcher()
+        
+        # 创建一些缓存查询
+        cached_queries = [
+            ("list all files", "ls -la"),
+            ("show directories", "ls -d */"),
+            ("create new folder", "mkdir new_folder"),
+            ("delete old files", "rm -f old*"),
+            ("completely different query", "some command"),
+        ]
+        
+        # 查找相似查询
+        target = "list files in directory"
+        similar = matcher.find_similar_queries(target, cached_queries, threshold=0.3)
+        
+        # 应该找到一些相似的查询
+        assert len(similar) > 0
+        
+        # 验证结果格式
+        for query, command, similarity in similar:
+            assert isinstance(query, str)
+            assert isinstance(command, str)
+            assert isinstance(similarity, float)
+            assert 0 <= similarity <= 1
+        
+        # 验证结果按相似度降序排列
+        similarities = [s for _, _, s in similar]
+        assert similarities == sorted(similarities, reverse=True)
+    
+    def test_find_similar_queries_empty_target(self):
+        """测试空目标查询的处理"""
+        from aicmd.query_matcher import QueryMatcher
+        
+        matcher = QueryMatcher()
+        
+        cached_queries = [("list files", "ls"), ("show dirs", "ls -d")]
+        
+        # 空查询应该返回空列表
+        similar = matcher.find_similar_queries("", cached_queries)
+        assert similar == []
+    
+    def test_find_similar_queries_performance_optimization(self):
+        """测试大量查询时的性能优化效果"""
+        from aicmd.query_matcher import QueryMatcher
+        
+        matcher = QueryMatcher()
+        
+        # 创建大量缓存查询
+        cached_queries = [(f"query {i} test", f"command {i}") for i in range(100)]
+        
+        # 添加一些相关查询
+        cached_queries.extend([
+            ("list files test", "ls test"),
+            ("show files test", "ls -la test"),
+            ("display files test", "find . -name test"),
+        ])
+        
+        # 查找相似查询
+        target = "list test files"
+        similar = matcher.find_similar_queries(target, cached_queries, threshold=0.3)
+        
+        # 应该能找到相关查询
+        assert len(similar) > 0
+        
+        # 验证预计算缓存被使用
+        assert len(matcher._normalized_cache) > 0

@@ -45,6 +45,23 @@ def setup_test_environment():
     os.environ.pop("AICMD_LOG_LEVEL", None)
 
 
+@pytest.fixture(autouse=True)
+def reset_config_manager_singleton():
+    """
+    在每个测试前重置 ConfigManager 单例
+    确保测试之间的配置隔离
+    """
+    from aicmd.config_manager import ConfigManager
+    
+    # 在测试前重置单例
+    ConfigManager.reset_instance()
+    
+    yield
+    
+    # 在测试后也重置，保持清洁
+    ConfigManager.reset_instance()
+
+
 # ============================================================
 # 临时目录和文件 fixtures
 # ============================================================
