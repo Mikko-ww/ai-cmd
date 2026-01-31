@@ -12,10 +12,29 @@ from .logger import logger
 
 
 class ConfigManager:
-    """配置管理器，负责读取和管理所有缓存相关配置项"""
+    """
+    配置管理器，负责读取和管理所有缓存相关配置项
+    
+    使用单例模式确保应用内只有一个配置实例，避免重复加载配置文件
+    """
+    
+    _instance = None
+    _initialized = False
+    
+    def __new__(cls):
+        """实现单例模式"""
+        if cls._instance is None:
+            cls._instance = super(ConfigManager, cls).__new__(cls)
+        return cls._instance
 
     def __init__(self):
-        """初始化配置管理器，支持多层配置源"""
+        """初始化配置管理器，支持多层配置源（仅在首次实例化时执行）"""
+        # 避免重复初始化
+        if ConfigManager._initialized:
+            return
+        
+        ConfigManager._initialized = True
+        
         # 默认配置
         self.default_config = {
             # 基本配置
@@ -34,6 +53,7 @@ class ConfigManager:
             "database_file": "cache.db",
             "max_cache_age_days": 30,
             "cache_size_limit": 1000,
+            "cache_query_limit": 500,  # 性能优化：相似度匹配时只查询最近使用的N条
             # 交互配置
             "interaction_timeout_seconds": 30,
             "positive_weight": 0.2,
@@ -639,3 +659,13 @@ class ConfigManager:
 
         except (ValueError, TypeError, KeyError):
             return None
+    
+    @classmethod
+    def reset_instance(cls):
+        """
+        重置单例实例（主要用于测试）
+        
+        警告：此方法会清除当前配置实例，下次访问时会重新加载配置
+        """
+        cls._instance = None
+        cls._initialized = False

@@ -228,3 +228,35 @@ class TestCacheManagerErrorHandling:
         
         status = mock_cache_manager.get_error_status()
         assert status["error_count"] == 0
+
+
+class TestCacheManagerPerformance:
+    """测试缓存管理器的性能优化功能"""
+    
+    def test_get_all_cached_queries_with_limit(self, mock_cache_manager):
+        """测试带限制的查询获取（性能优化）"""
+        # 保存多个缓存条目
+        for i in range(10):
+            mock_cache_manager.save_cache_entry(f"query {i}", f"command {i}")
+        
+        # 测试限制查询数量
+        all_queries = mock_cache_manager.get_all_cached_queries(limit=5)
+        
+        # 应该最多返回5个结果
+        assert len(all_queries) <= 5
+        
+        # 确保返回的是元组列表
+        if all_queries:
+            assert all(isinstance(item, tuple) and len(item) == 2 for item in all_queries)
+    
+    def test_get_all_cached_queries_without_limit(self, mock_cache_manager):
+        """测试不带限制的查询获取（返回所有）"""
+        # 保存3个缓存条目
+        for i in range(3):
+            mock_cache_manager.save_cache_entry(f"test query {i}", f"test command {i}")
+        
+        # 不使用限制
+        all_queries = mock_cache_manager.get_all_cached_queries()
+        
+        # 应该返回所有结果
+        assert len(all_queries) >= 3

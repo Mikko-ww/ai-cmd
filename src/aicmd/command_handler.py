@@ -300,7 +300,9 @@ class CommandHandler:
         config: ConfigManager,
     ) -> Optional[tuple]:
         """Handle similar cache match"""
-        all_cached_queries = cache_manager.get_all_cached_queries()
+        # 使用配置的缓存查询限制以优化大缓存场景的性能
+        cache_query_limit = config.get("cache_query_limit", 500)
+        all_cached_queries = cache_manager.get_all_cached_queries(limit=cache_query_limit)
         
         if not all_cached_queries:
             return None

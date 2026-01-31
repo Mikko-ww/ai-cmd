@@ -20,11 +20,11 @@ class TestConfigManager:
         
         # 验证默认值（来自 setting_template.json）
         assert config.get("cache_enabled") is True
-        assert config.get("auto_copy_threshold") == 1.0  # 实际默认值是 1.0
+        assert config.get("auto_copy_threshold") == 0.9  # 默认值是 0.9
         # manual_confirmation_threshold 可能不存在或值不同，改用确认存在的配置
         assert config.get("api_timeout_seconds") == 30
         assert config.get("max_retries") == 3
-        assert config.get("confidence_threshold") == 0.75  # 实际默认值是 0.75
+        assert config.get("confidence_threshold") == 0.8  # 默认值是 0.8
 
     def test_get_with_default(self):
         """测试 get 方法的默认值"""

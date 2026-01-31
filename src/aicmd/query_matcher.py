@@ -42,6 +42,9 @@ class QueryMatcher:
 
         # 反向索引，提高查找效率
         self._build_reverse_synonyms()
+        
+        # 预计算缓存：存储标准化后的查询词集
+        self._normalized_cache: Dict[str, Set[str]] = {}
 
         # 常见停用词
         self.stop_words = {
@@ -199,6 +202,21 @@ class QueryMatcher:
 
         return round(combined_similarity, 3)
 
+    def precompute_normalized_queries(self, queries: List[str]):
+        """
+        预计算查询列表的标准化词集，提高后续相似度计算效率
+        
+        Args:
+            queries: 查询字符串列表
+        """
+        for query in queries:
+            if query not in self._normalized_cache:
+                self._normalized_cache[query] = set(self.normalize_query(query))
+    
+    def clear_normalized_cache(self):
+        """清空预计算缓存"""
+        self._normalized_cache.clear()
+    
     def get_query_hash(self, query: str) -> str:
         """
         生成查询的标准化哈希值
@@ -219,7 +237,11 @@ class QueryMatcher:
         threshold: float = 0.7,
     ) -> List[Tuple[str, str, float]]:
         """
-        从缓存查询中找到相似的查询
+        从缓存查询中找到相似的查询（优化版本）
+        
+        使用两阶段过滤策略：
+        1. 快速过滤：通过词集交集判断是否可能匹配
+        2. 精确计算：对候选项计算完整相似度
 
         Args:
             target_query: 目标查询
@@ -229,9 +251,31 @@ class QueryMatcher:
         Returns:
             相似查询列表 [(query, command, similarity), ...] 按相似度降序排列
         """
-        similar_queries = []
-
+        # 标准化目标查询
+        target_words = set(self.normalize_query(target_query))
+        
+        # 如果目标查询为空，无法匹配
+        if not target_words:
+            return []
+        
+        # 预计算所有缓存查询的标准化结果
+        self.precompute_normalized_queries([q for q, _ in cached_queries])
+        
+        # 阶段1: 快速过滤 - 至少有一个词匹配的候选项
+        candidates = []
         for cached_query, command in cached_queries:
+            cached_words = self._normalized_cache.get(
+                cached_query, 
+                set(self.normalize_query(cached_query))
+            )
+            
+            # 快速过滤：检查是否有词交集
+            if cached_words & target_words:  # 集合交集操作，O(min(len(a), len(b)))
+                candidates.append((cached_query, command))
+        
+        # 阶段2: 精确计算 - 对候选项计算完整相似度
+        similar_queries = []
+        for cached_query, command in candidates:
             similarity = self.calculate_similarity(target_query, cached_query)
             if similarity >= threshold:
                 similar_queries.append((cached_query, command, similarity))

@@ -43,7 +43,8 @@
     "cache_directory": "~/.ai-cmd",
     "database_file": "cache.db",
     "max_cache_age_days": 30,
-    "cache_size_limit": 1000
+    "cache_size_limit": 1000,
+    "cache_query_limit": 500
   },
   "interaction": {
     "interaction_timeout_seconds": 30,
