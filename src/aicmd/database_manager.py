@@ -105,7 +105,7 @@ class DatabaseConnectionPool:
             if conn is not None:
                 try:
                     self._pool.put_nowait(conn)
-                except:
+                except Exception:
                     conn.close()
     
     def close_all(self):
@@ -114,7 +114,7 @@ class DatabaseConnectionPool:
             try:
                 conn = self._pool.get_nowait()
                 conn.close()
-            except:
+            except Exception:
                 pass
         self._initialized = False
 

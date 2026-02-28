@@ -351,7 +351,7 @@ class ConfigManager:
             mapping.pop(key, None)
         return mapping
 
-    def is_valid_config_key(self, key: str) -> bool:
+    def validate_config(self) -> dict:
         """验证配置的合理性和完整性"""
         warnings = []
         errors = []
