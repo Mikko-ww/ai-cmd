@@ -1,0 +1,151 @@
+copilot:
+  bot_assignee: "copilot-swe-agent[bot]"
+  bot_login_allowlist:
+    - "Copilot"
+    - "copilot-swe-agent"
+    - "copilot-swe-agent[bot]"
+  base_branch: "main"
+  model: "Auto"
+  requirement_model: "Auto"
+  model_catalog:
+    - name: "Auto"
+      capability: "Copilot auto-selects the best model based on availability and helps reduce rate limiting"
+    - name: "Claude Opus 4.6"
+      capability: "Strongest Anthropic model for complex agentic coding, long-running tasks, and large-codebase review/debugging"
+    - name: "Claude Sonnet 4.6"
+      capability: "Upgraded coding and computer-use performance with stronger long-context reasoning and planning"
+    - name: "GPT-5.3-Codex"
+      capability: "OpenAI's most capable agentic coding model, optimized for long-running tool-use workflows with high context"
+
+flowmind:
+  base_dir: ".flowmind"
+
+paths:
+  spec_dir: "docs/specs"
+  plan_yaml_dir: "plans"
+  plan_md_dir: "plans"
+
+labels:
+  parent:
+    requested: "agent:requested"
+    spec_in_progress: "agent:spec-in-progress"
+    spec_approved: "agent:spec-approved"
+    plan_in_progress: "agent:plan-in-progress"
+    plan_approved: "agent:plan-approved"
+    executing: "agent:executing"
+    done: "agent:done"
+    blocked: "agent:blocked"
+    paused: "agent:paused"
+  task:
+    task: "agent:task"
+    pending: "agent:pending"
+    in_progress: "agent:in-progress"
+    in_review: "agent:in-review"
+    done: "agent:done"
+    blocked: "agent:blocked"
+    cancelled: "agent:cancelled"
+  level:
+    l1: "agent:l1"
+    l2: "agent:l2"
+    l3: "agent:l3"
+  pr:
+    spec: "agent:spec-pr"
+    plan: "agent:plan-pr"
+    task: "agent:task-pr"
+  special:
+    probe: "agent:probe"
+
+merge_policy:
+  l1:
+    allowlist_globs:
+      - "docs/**"
+      - "*.md"
+      - "tests/**"
+      - "**/*.test.js"
+      - "**/*.test.ts"
+      - "**/*.spec.js"
+      - "**/*.spec.ts"
+      - "plans/**"
+  sensitive_globs:
+    - ".github/workflows/**"
+    - ".github/actions/**"
+    - "**/*.yml"
+    - "**/*.yaml"
+    - ".github/**"
+    - "package.json"
+    - "package-lock.json"
+    - "yarn.lock"
+    - "pnpm-lock.yaml"
+    - "Dockerfile"
+    - "docker-compose.yml"
+    - ".env*"
+    - "**/*secret*"
+    - "**/*credential*"
+    - "**/*token*"
+  max_changed_files_l1: 300
+
+ci:
+  mode: "dispatch"
+  workflow: "agent-ci.yml"
+  required_check_name: "agent/ci"
+  commands:
+    lint: "npm run lint"
+    test: "npm test"
+
+timeouts:
+  spec_pr_minutes: 20
+  plan_pr_minutes: 20
+  task_pr_minutes: 45
+  ci_minutes: 30
+
+notifications:
+  github:
+    enabled: true
+  webhook:
+    enabled: false
+    secret_name: "AGENT_WEBHOOK_SECRET"
+    url_secret_name: "AGENT_WEBHOOK_URL"
+
+commands:
+  approve_task: "/approve-task"
+  pause: "/pause"
+  resume: "/resume"
+  retry: "/retry"
+  abort: "/abort"
+
+retry:
+  max_attempts: 3
+  create_new_issue: true
+  max_retries: 2
+  delay_minutes: 5
+
+phases:
+  spec:
+    output_file: "spec.md"
+    timeout_minutes: 20
+  plan:
+    output_files:
+      - "plan.yaml"
+      - "plan.md"
+    timeout_minutes: 20
+
+reconciliation:
+  schedule: "0 */6 * * *"
+  auto_fix_enabled: true
+
+state:
+  marker: "<!-- agent-state:json -->"
+  max_version_retries: 3
+  concurrency_group: "agent-{repo}-issue-{parent_issue}"
+
+# Prompt Template Configuration
+prompts:
+  # Custom template directory (optional)
+  # If specified, templates here override builtin templates
+  # Example: .github/agent/prompts
+  override_dir: null
+  
+  # Strict variable validation (default: true)
+  # If true, missing variables cause errors
+  # If false, missing variables are replaced with empty string
+  strict_variables: true

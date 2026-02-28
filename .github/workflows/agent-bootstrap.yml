@@ -1,0 +1,65 @@
+# ============================================================================
+# Agent Bootstrap Workflow
+# ============================================================================
+# 作用:
+# - 手动初始化或修复仓库中的 Agent labels。
+# 触发:
+# - workflow_dispatch（支持 dry_run）。
+# 输入:
+# - dry_run: 仅检查不写入
+# - label_locale: 标签描述语言（en / zh-CN）
+# 执行:
+# - 运行 .github/scripts/bootstrap-labels.js，
+#   按 .github/agent/labels.json 与 .github/agent/config.yml 同步标签定义。
+# 适用:
+# - 首次安装后补全标签、升级后修复标签、排查标签漂移。
+# ============================================================================
+
+name: Agent Bootstrap
+run-name: "Agent Bootstrap • ${{ inputs.dry_run && 'Dry Run' || 'Live Run' }}"
+
+on:
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: 'Dry run mode (only check, do not create/update)'
+        required: false
+        type: boolean
+        default: false
+      label_locale:
+        description: 'Label description locale'
+        required: false
+        type: choice
+        default: 'en'
+        options:
+          - en
+          - zh-CN
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  bootstrap-labels:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install dependencies
+        run: cd .github/scripts && npm install
+
+      - name: Bootstrap labels
+        run: node .github/scripts/bootstrap-labels.js
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+          DRY_RUN: ${{ inputs.dry_run }}
+          AGENT_LABEL_LOCALE: ${{ inputs.label_locale }}

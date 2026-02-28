@@ -1,0 +1,127 @@
+name: "🚀 Agent Request - 需求提交"
+description: "提交一个新的需求，由Agent自动生成Spec和Plan并执行"
+title: "[Request] "
+labels: ["agent:requested"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        ## 欢迎使用GitHub自动智能体系统
+        
+        请填写以下信息来描述您的需求。系统将自动：
+        1. 生成中文需求规格说明书（Spec）并提交PR供审批
+        2. 生成可执行任务清单（Plan）并提交PR供审批
+        3. 按顺序执行任务，每个任务由Copilot完成并提交PR
+        4. 根据任务等级自动或半自动合并PR
+        
+        **注意**: 仅仓库协作者可以提交需求。
+
+  - type: textarea
+    id: background
+    attributes:
+      label: "背景与目标"
+      description: "描述为什么需要这个功能/改进，以及要达成的目标"
+      placeholder: |
+        例如：
+        - 当前存在的问题：用户无法...
+        - 业务价值：提升...
+        - 预期目标：实现...
+    validations:
+      required: true
+
+  - type: textarea
+    id: scope-in
+    attributes:
+      label: "范围 - 包含"
+      description: "明确列出本需求要实现的功能和特性"
+      placeholder: |
+        - ✅ 功能1
+        - ✅ 功能2
+        - ✅ 功能3
+    validations:
+      required: true
+
+  - type: textarea
+    id: scope-out
+    attributes:
+      label: "范围 - 不包含"
+      description: "明确列出不在本需求范围内的内容"
+      placeholder: |
+        - ❌ 不包含的功能1
+        - ❌ 不包含的功能2
+    validations:
+      required: false
+
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: "验收标准"
+      description: "如何判断需求已经完成？列出具体可测试的标准"
+      placeholder: |
+        - [ ] 标准1
+        - [ ] 标准2
+        - [ ] 标准3
+    validations:
+      required: true
+
+  - type: textarea
+    id: constraints
+    attributes:
+      label: "约束与禁止项"
+      description: "有哪些技术约束、时间约束或明确禁止的做法？"
+      placeholder: |
+        - 必须使用...
+        - 不得修改...
+        - 必须在...之前完成
+    validations:
+      required: false
+
+  - type: input
+    id: plan-task-target
+    attributes:
+      label: "计划任务数（期望）"
+      description: "希望Plan阶段拆分出的任务数量（默认5，建议 3-8）"
+      placeholder: "5"
+      value: "5"
+    validations:
+      required: false
+
+  - type: input
+    id: plan-task-max
+    attributes:
+      label: "最大任务条数"
+      description: "允许Plan阶段拆分出的任务上限（默认8）"
+      placeholder: "8"
+      value: "8"
+    validations:
+      required: false
+
+  - type: textarea
+    id: additional
+    attributes:
+      label: "补充信息"
+      description: "其他需要说明的信息（参考资料、相关Issue等）"
+      placeholder: |
+        - 参考文档：...
+        - 相关Issue：#123
+    validations:
+      required: false
+
+  - type: markdown
+    attributes:
+      value: |
+        ---
+        
+        提交后，系统将自动开始处理您的需求。您可以通过Issue评论使用以下命令：
+        - `/pause` - 暂停任务派发
+        - `/resume` - 恢复任务派发
+        - `/abort` - 终止整个流水线
+
+  - type: textarea
+    id: fingerprint
+    attributes:
+      label: "系统指纹（请勿修改）"
+      description: "修改或删除将导致自动化流程无法执行"
+      value: "<!-- agent-request -->"
+    validations:
+      required: true

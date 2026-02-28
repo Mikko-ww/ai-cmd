@@ -1,0 +1,85 @@
+# ============================================================================
+# Agent Task Creator Workflow
+# ============================================================================
+# 作用:
+# - 在 plan 合并后读取 strict plan YAML，创建/补齐 task issues，并写入 runtime state。
+# 触发:
+# - workflow_dispatch（通常由 handle-plan-merge.js 调用）。
+# 输入:
+# - parent_issue。
+# 执行:
+# - create-tasks.js 从 plans/issue-<id>.yaml 生成 task issue（含 marker + 风险标签）
+# - 同步 state.tasks（status/issue/pr 等运行态）
+# - dispatch agent-task-dispatcher.yml 触发首轮任务分发
+# 保障:
+# - 使用 concurrency group 防止同一 parent_issue 并发重复创建。
+# ============================================================================
+
+name: Agent Task Creator
+run-name: "Agent Task Creator • Parent Issue #${{ inputs.parent_issue }}"
+
+on:
+  workflow_dispatch:
+    inputs:
+      parent_issue:
+        description: 'Parent issue number'
+        required: true
+        type: string
+
+permissions:
+  actions: write
+  contents: write
+  issues: write
+  pull-requests: write
+
+jobs:
+  create-tasks:
+    runs-on: ubuntu-latest
+    concurrency:
+      group: agent-task-creator-${{ github.repository }}-${{ inputs.parent_issue }}
+      cancel-in-progress: false
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install dependencies
+        run: cd .github/scripts && npm install
+
+      - name: Normalize inputs
+        id: normalize
+        shell: bash
+        run: |
+          parent_issue='${{ inputs.parent_issue }}'
+          if ! [[ "$parent_issue" =~ ^[1-9][0-9]*$ ]]; then
+            echo "::error::parent_issue must be a positive integer, got: $parent_issue"
+            exit 1
+          fi
+          echo "parent_issue=$parent_issue" >> "$GITHUB_OUTPUT"
+
+      - name: Create task issues
+        run: node .github/scripts/create-tasks.js
+        env:
+          AGENT_GH_TOKEN: ${{ secrets.AGENT_GH_TOKEN }}
+          PARENT_ISSUE: ${{ steps.normalize.outputs.parent_issue }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+
+      - name: Trigger first task dispatch
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.AGENT_GH_TOKEN }}
+          script: |
+            await github.rest.actions.createWorkflowDispatch({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              workflow_id: 'agent-task-dispatcher.yml',
+              ref: context.ref.replace('refs/heads/', ''),
+              inputs: {
+                parent_issue: '${{ steps.normalize.outputs.parent_issue }}',
+                trigger: 'task-creator'
+              }
+            });

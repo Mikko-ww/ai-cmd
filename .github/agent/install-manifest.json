@@ -1,0 +1,18 @@
+{
+  "schema_version": 1,
+  "preset": "standard",
+  "installed_workflows": [
+    "agent-bootstrap.yml",
+    "agent-ci.yml",
+    "agent-commands.yml",
+    "agent-intake.yml",
+    "agent-merge-policy.yml",
+    "agent-plan-validation.yml",
+    "agent-pr-router.yml",
+    "agent-task-creator.yml",
+    "agent-task-dispatcher.yml",
+    "manual-request-dispatch.yml"
+  ],
+  "tool_version": "1.1.1",
+  "updated_at": "2026-02-28T12:06:57.352Z"
+}

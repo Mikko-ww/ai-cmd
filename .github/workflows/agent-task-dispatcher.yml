@@ -1,0 +1,73 @@
+# ============================================================================
+# Agent Task Dispatcher Workflow
+# ============================================================================
+# 作用:
+# - 为指定 epic 选择下一个可执行 task，并把任务分配给 Copilot。
+# 触发:
+# - workflow_dispatch（来自 task creator、task merge、/resume、reconcile 或手动）。
+# 输入:
+# - parent_issue（必填）, trigger（可选）。
+# 执行:
+# - dispatch-task.js 读取 strict plan 与 state
+# - 若 paused 或已有 active task，则跳过分发
+# - 按 plan 顺序选择第一个 deps 满足且 status=pending 的任务
+# - 更新标签/状态并写入派发评论；全部任务终态时将 epic 标记为 done
+# 保障:
+# - 使用 concurrency group 防止同一 parent_issue 并发派发。
+# ============================================================================
+
+name: Agent Task Dispatcher
+run-name: "Agent Task Dispatcher • Parent Issue #${{ inputs.parent_issue }} • ${{ inputs.trigger }}"
+
+on:
+  workflow_dispatch:
+    inputs:
+      parent_issue:
+        description: 'Parent issue number'
+        required: true
+        type: string
+      trigger:
+        description: 'Trigger reason'
+        required: false
+        type: string
+        default: 'manual'
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  dispatch:
+    runs-on: ubuntu-latest
+    concurrency:
+      group: agent-task-dispatcher-${{ github.repository }}-${{ inputs.parent_issue }}
+      cancel-in-progress: false
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install dependencies
+        run: cd .github/scripts && npm install
+
+      - name: Normalize inputs
+        id: normalize
+        shell: bash
+        run: |
+          parent_issue='${{ inputs.parent_issue }}'
+          if ! [[ "$parent_issue" =~ ^[1-9][0-9]*$ ]]; then
+            echo "::error::parent_issue must be a positive integer, got: $parent_issue"
+            exit 1
+          fi
+          echo "parent_issue=$parent_issue" >> "$GITHUB_OUTPUT"
+
+      - name: Dispatch next task
+        run: node .github/scripts/dispatch-task.js
+        env:
+          AGENT_GH_TOKEN: ${{ secrets.AGENT_GH_TOKEN }}
+          PARENT_ISSUE: ${{ steps.normalize.outputs.parent_issue }}
+          GITHUB_REPOSITORY: ${{ github.repository }}

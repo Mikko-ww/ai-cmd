@@ -1,0 +1,173 @@
+{
+  "version": "1.0.0",
+  "labels": [
+    {
+      "name": "agent:requested",
+      "color": "0E8A16",
+      "descriptions": {
+        "en": "Request issue created, awaiting spec generation",
+        "zh-CN": "需求请求已创建，等待生成规格说明"
+      }
+    },
+    {
+      "name": "agent:spec-in-progress",
+      "color": "1D76DB",
+      "descriptions": {
+        "en": "Copilot is generating specification document",
+        "zh-CN": "Copilot 正在生成规格说明文档"
+      }
+    },
+    {
+      "name": "agent:spec-approved",
+      "color": "0E8A16",
+      "descriptions": {
+        "en": "Specification PR has been merged",
+        "zh-CN": "规格说明 PR 已合并"
+      }
+    },
+    {
+      "name": "agent:plan-in-progress",
+      "color": "1D76DB",
+      "descriptions": {
+        "en": "Copilot is generating execution plan",
+        "zh-CN": "Copilot 正在生成执行计划"
+      }
+    },
+    {
+      "name": "agent:plan-approved",
+      "color": "0E8A16",
+      "descriptions": {
+        "en": "Plan PR has been merged",
+        "zh-CN": "计划 PR 已合并"
+      }
+    },
+    {
+      "name": "agent:executing",
+      "color": "FBCA04",
+      "descriptions": {
+        "en": "Tasks are being executed",
+        "zh-CN": "任务正在执行中"
+      }
+    },
+    {
+      "name": "agent:done",
+      "color": "0E8A16",
+      "descriptions": {
+        "en": "All tasks completed successfully",
+        "zh-CN": "所有任务已成功完成"
+      }
+    },
+    {
+      "name": "agent:blocked",
+      "color": "D93F0B",
+      "descriptions": {
+        "en": "Pipeline is blocked and requires intervention",
+        "zh-CN": "流程被阻塞，需要人工干预"
+      }
+    },
+    {
+      "name": "agent:paused",
+      "color": "FBCA04",
+      "descriptions": {
+        "en": "Pipeline is paused via /pause command",
+        "zh-CN": "流程已通过 /pause 命令暂停"
+      }
+    },
+    {
+      "name": "agent:task",
+      "color": "0052CC",
+      "descriptions": {
+        "en": "Task issue (not a requirement)",
+        "zh-CN": "任务问题（非需求）"
+      }
+    },
+    {
+      "name": "agent:pending",
+      "color": "EDEDED",
+      "descriptions": {
+        "en": "Task is waiting to be started",
+        "zh-CN": "任务等待开始"
+      }
+    },
+    {
+      "name": "agent:in-progress",
+      "color": "FBCA04",
+      "descriptions": {
+        "en": "Task is currently being worked on",
+        "zh-CN": "任务正在进行中"
+      }
+    },
+    {
+      "name": "agent:in-review",
+      "color": "1D76DB",
+      "descriptions": {
+        "en": "Task PR is awaiting review/merge",
+        "zh-CN": "任务 PR 等待审查/合并"
+      }
+    },
+    {
+      "name": "agent:cancelled",
+      "color": "6E6E6E",
+      "descriptions": {
+        "en": "Task was cancelled",
+        "zh-CN": "任务已取消"
+      }
+    },
+    {
+      "name": "agent:l1",
+      "color": "D4C5F9",
+      "descriptions": {
+        "en": "Level 1: Auto-merge allowed (allowlist + CI green)",
+        "zh-CN": "级别 1：允许自动合并（白名单 + CI 通过）"
+      }
+    },
+    {
+      "name": "agent:l2",
+      "color": "9B51E0",
+      "descriptions": {
+        "en": "Level 2: Requires /approve-task command + CI green",
+        "zh-CN": "级别 2：需要 /approve-task 命令 + CI 通过"
+      }
+    },
+    {
+      "name": "agent:l3",
+      "color": "5319E7",
+      "descriptions": {
+        "en": "Level 3: Requires full PR review",
+        "zh-CN": "级别 3：需要完整 PR 审查"
+      }
+    },
+    {
+      "name": "agent:spec-pr",
+      "color": "FF9800",
+      "descriptions": {
+        "en": "Specification document PR",
+        "zh-CN": "规格说明文档 PR"
+      }
+    },
+    {
+      "name": "agent:plan-pr",
+      "color": "FF9800",
+      "descriptions": {
+        "en": "Plan document PR",
+        "zh-CN": "计划文档 PR"
+      }
+    },
+    {
+      "name": "agent:task-pr",
+      "color": "FF9800",
+      "descriptions": {
+        "en": "Task implementation PR",
+        "zh-CN": "任务实现 PR"
+      }
+    },
+    {
+      "name": "agent:probe",
+      "color": "6E6E6E",
+      "descriptions": {
+        "en": "Probe issue for prerequisite checks",
+        "zh-CN": "先决条件检查探测问题"
+      }
+    }
+  ]
+}

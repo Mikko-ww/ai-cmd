@@ -1,0 +1,26 @@
+{
+  "version": 2,
+  "markers": {
+    "schemaVersion": "Agent-Schema-Version",
+    "parentIssue": "Agent-Parent-Issue",
+    "prType": "Agent-PR-Type",
+    "issueType": "Agent-Issue-Type",
+    "phaseName": "Agent-Phase-Name",
+    "taskKey": "Agent-Task-Key",
+    "retryCount": "Agent-Retry-Count"
+  },
+  "enums": {
+    "prType": ["spec", "plan", "task"],
+    "issueType": ["phase", "task"],
+    "phaseName": ["spec", "plan", "execution"]
+  },
+  "patterns": {
+    "parentIssue": "^[1-9]\\d*$",
+    "taskKey": "^task-[a-z0-9][a-z0-9-]{0,62}$",
+    "retryCount": "^[1-9]\\d*$"
+  },
+  "block": {
+    "start": "<!-- agent-markers:start -->",
+    "end": "<!-- agent-markers:end -->"
+  }
+}

@@ -1,0 +1,104 @@
+# ============================================================================
+# Agent Commands Workflow
+# ============================================================================
+# 作用:
+# - 处理协作者在 Issue/PR 评论中的 Agent 控制命令。
+# 触发:
+# - issue_comment.created（仅 OWNER/MEMBER/COLLABORATOR）。
+# 支持命令:
+# - /approve-task, /pause, /resume, /retry, /skip-phase, /cancel-phase, /reopen, /abort
+# 执行:
+# - parse-command.js 解析命令
+# - handle-commands.js 将 phase/task issue 上的流程命令转发到 epic issue
+# - handle-approve-task.js 处理 L2 任务审批
+# - handle-pause-resume.js 处理 pause/resume/abort 及转发后的 phase 控制命令
+# ============================================================================
+
+name: Agent Commands
+run-name: "Agent Commands • #${{ github.event.issue.number }} • ${{ github.event.issue.title }}"
+
+on:
+  issue_comment:
+    types: [created]
+
+permissions:
+  contents: read
+  issues: write
+  pull-requests: write
+
+jobs:
+  handle-command:
+    runs-on: ubuntu-latest
+    if: |
+      contains(fromJSON('["OWNER", "MEMBER", "COLLABORATOR"]'), github.event.comment.author_association) &&
+      (startsWith(github.event.comment.body, '/approve-task') ||
+       startsWith(github.event.comment.body, '/pause') ||
+       startsWith(github.event.comment.body, '/resume') ||
+       startsWith(github.event.comment.body, '/retry') ||
+       startsWith(github.event.comment.body, '/skip-phase') ||
+       startsWith(github.event.comment.body, '/cancel-phase') ||
+       startsWith(github.event.comment.body, '/reopen') ||
+       startsWith(github.event.comment.body, '/abort'))
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install dependencies
+        run: cd .github/scripts && npm install
+
+      - name: Parse command
+        id: parse
+        run: node .github/scripts/parse-command.js
+        env:
+          COMMENT_BODY: ${{ github.event.comment.body }}
+
+      - name: Forward command if needed
+        id: forward
+        if: |
+          steps.parse.outputs.command == 'retry' ||
+          steps.parse.outputs.command == 'skip-phase' ||
+          steps.parse.outputs.command == 'cancel-phase' ||
+          steps.parse.outputs.command == 'reopen'
+        run: node .github/scripts/handle-commands.js
+        env:
+          AGENT_GH_TOKEN: ${{ secrets.AGENT_GH_TOKEN }}
+          ISSUE_NUMBER: ${{ github.event.issue.number }}
+          COMMAND: ${{ steps.parse.outputs.command }}
+          ACTOR: ${{ github.event.comment.user.login }}
+          COMMENT_BODY: ${{ github.event.comment.body }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+
+      - name: Handle approve-task
+        if: steps.parse.outputs.command == 'approve-task'
+        run: node .github/scripts/handle-approve-task.js
+        env:
+          AGENT_GH_TOKEN: ${{ secrets.AGENT_GH_TOKEN }}
+          PR_NUMBER: ${{ github.event.issue.number }}
+          APPROVER: ${{ github.event.comment.user.login }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+
+      - name: Handle pause/resume/abort
+        if: |
+          steps.parse.outputs.command == 'pause' ||
+          steps.parse.outputs.command == 'resume' ||
+          steps.parse.outputs.command == 'abort' ||
+          (steps.forward.outputs.forward_needed != 'true' && (
+            steps.parse.outputs.command == 'retry' ||
+            steps.parse.outputs.command == 'skip-phase' ||
+            steps.parse.outputs.command == 'cancel-phase' ||
+            steps.parse.outputs.command == 'reopen'
+          ))
+        run: node .github/scripts/handle-pause-resume.js
+        env:
+          AGENT_GH_TOKEN: ${{ secrets.AGENT_GH_TOKEN }}
+          ISSUE_NUMBER: ${{ steps.forward.outputs.target_issue || github.event.issue.number }}
+          COMMAND: ${{ steps.parse.outputs.command }}
+          ACTOR: ${{ github.event.comment.user.login }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+          GITHUB_REF: ${{ github.ref }}

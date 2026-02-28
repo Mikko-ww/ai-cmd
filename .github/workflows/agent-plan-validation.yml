@@ -1,0 +1,112 @@
+# ============================================================================
+# Agent Plan Validation Workflow
+# ============================================================================
+# 作用:
+# - 对 plan PR 对应的 plans/issue-<id>.yaml 执行严格契约校验。
+# 触发:
+# - pull_request.opened / pull_request.synchronize。
+# 执行:
+# - 通过 marker-parser 判断是否为 plan PR
+# - validate-plan.js --strict 校验 YAML 结构
+# - 失败时在 PR 留言并阻断（exit 1）
+# 说明:
+# - 非 plan PR 会直接跳过，不影响其他 PR。
+# ============================================================================
+
+name: Agent Plan Validation
+run-name: "Agent Plan Validation • PR #${{ github.event.pull_request.number }}"
+
+on:
+  pull_request:
+    types: [opened, synchronize]
+
+permissions:
+  contents: read
+  pull-requests: write
+  issues: write
+
+jobs:
+  validate-plan:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install dependencies
+        run: cd .github/scripts && npm install
+
+      - name: Detect plan PR
+        id: detect
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const { tryParseAgentMetadata } = require('./.github/scripts/lib/marker-parser');
+            const { loadConfig } = require('./.github/scripts/lib/config-loader');
+
+            const body = context.payload.pull_request.body || '';
+            const parsed = tryParseAgentMetadata(body, 'pr');
+
+            if (!parsed.ok || parsed.metadata.prType !== 'plan') {
+              core.setOutput('is_plan_pr', 'false');
+              core.info('Skip: not a valid plan PR');
+              return;
+            }
+
+            const config = loadConfig();
+            const parentIssue = parsed.metadata.parentIssue;
+            const planFile = `${config.paths.plan_yaml_dir}/issue-${parentIssue}.yaml`;
+
+            core.setOutput('is_plan_pr', 'true');
+            core.setOutput('parent_issue', String(parentIssue));
+            core.setOutput('plan_file', planFile);
+            core.info(`Plan PR detected. plan_file=${planFile}`);
+
+      - name: Validate plan YAML
+        id: validate
+        if: steps.detect.outputs.is_plan_pr == 'true'
+        continue-on-error: true
+        run: node .github/scripts/validate-plan.js --file "${{ steps.detect.outputs.plan_file }}" --strict --format copilot --report tmp/plan-validation.json
+
+      - name: Comment validation failure
+        if: steps.detect.outputs.is_plan_pr == 'true' && (steps.validate.outcome == 'failure' || steps.validate.outputs.valid == 'false')
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const code = '${{ steps.validate.outputs.error_code }}' || 'PLAN_VALIDATION_FAILED';
+            const errorPath = '${{ steps.validate.outputs.error_path }}' || '/';
+
+            const message = [
+              '## ❌ Plan YAML Validation Failed',
+              '',
+              '- Plan file does not satisfy strict contract.',
+              `- Error code: \`${code}\``,
+              `- Path: \`${errorPath}\``,
+              '',
+              'Please fix the plan YAML and push again.',
+              '',
+              'Required task fields:',
+              '`id`, `title`, `level`, `status`, `deps`, `acceptance`, `issue`, `pr`',
+              '',
+              'Notes:',
+              '- Use `deps: []` when there is no dependency',
+              '- Keep `issue: null` and `pr: null` before creation',
+              '- Do not use alias keys like `dependencies` or `acceptance_criteria`'
+            ].join('\n');
+
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.payload.pull_request.number,
+              body: message
+            });
+
+      - name: Enforce validation gate
+        if: steps.detect.outputs.is_plan_pr == 'true' && (steps.validate.outcome == 'failure' || steps.validate.outputs.valid == 'false')
+        run: exit 1

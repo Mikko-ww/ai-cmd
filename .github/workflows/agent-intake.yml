@@ -1,0 +1,71 @@
+# ============================================================================
+# Agent Intake Workflow
+# ============================================================================
+# 作用:
+# - 处理入口 request issue，初始化状态并创建 spec phase issue。
+# 触发:
+# - issues.opened。
+# 条件:
+# - 作者权限为 OWNER/MEMBER/COLLABORATOR
+# - issue 含标签 agent:requested
+# - issue body 含 <!-- agent-request --> 标记
+# 执行:
+# - initialize-state.js 初始化 epic runtime state
+# - add-labels.js 补齐入口标签
+# - create-phase-issue.js 创建 spec 阶段 issue
+# ============================================================================
+
+name: Agent Intake
+run-name: "Agent Intake • #${{ github.event.issue.number }} • ${{ github.event.issue.title }}"
+
+on:
+  issues:
+    types: [opened]
+
+permissions:
+  issues: write
+  contents: read
+
+jobs:
+  intake:
+    runs-on: ubuntu-latest
+    if: |
+      contains(fromJSON('["OWNER", "MEMBER", "COLLABORATOR"]'), github.event.issue.author_association) &&
+      contains(github.event.issue.labels.*.name, 'agent:requested') &&
+      contains(github.event.issue.body, '<!-- agent-request -->')
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install dependencies
+        run: cd .github/scripts && npm install
+
+      - name: Initialize state with phases
+        run: node .github/scripts/initialize-state.js
+        env:
+          AGENT_GH_TOKEN: ${{ secrets.AGENT_GH_TOKEN }}
+          ISSUE_NUMBER: ${{ github.event.issue.number }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+
+      - name: Add Epic label
+        run: node .github/scripts/add-labels.js
+        env:
+          AGENT_GH_TOKEN: ${{ secrets.AGENT_GH_TOKEN }}
+          ISSUE_NUMBER: ${{ github.event.issue.number }}
+          LABELS: agent:requested
+          GITHUB_REPOSITORY: ${{ github.repository }}
+
+      - name: Create phase issue
+        id: create_phase
+        run: node .github/scripts/create-phase-issue.js
+        env:
+          AGENT_GH_TOKEN: ${{ secrets.AGENT_GH_TOKEN }}
+          PHASE: spec
+          EPIC_ISSUE: ${{ github.event.issue.number }}
+          GITHUB_REPOSITORY: ${{ github.repository }}

@@ -1,0 +1,105 @@
+# ============================================================================
+# Manual Request Dispatch Workflow
+# ============================================================================
+# 作用:
+# - 提供 workflow_dispatch 入口，手动创建标准 agent request issue（移动端友好）。
+# 触发:
+# - workflow_dispatch（表单输入背景、范围、验收标准等字段）。
+# 执行:
+# - 校验 AGENT_GH_TOKEN
+# - dispatch-agent-request-intake.js 组装并创建入口 issue
+# - 自动确保并打上 agent:requested + action-dispatch 标签
+# 输出:
+# - issue_number, issue_url
+# ============================================================================
+
+name: Manual Request Dispatch
+run-name: "Manual Request Dispatch • ${{ inputs.title }}"
+
+on:
+  workflow_dispatch:
+    inputs:
+      title:
+        description: "需求标题（无需手动添加 [Request] 前缀）"
+        required: true
+        type: string
+      background:
+        description: "背景与目标"
+        required: true
+        type: string
+      scope_in:
+        description: "范围（包含）"
+        required: true
+        type: string
+      scope_out:
+        description: "范围（不包含）"
+        required: false
+        type: string
+      acceptance:
+        description: "验收标准"
+        required: true
+        type: string
+      constraints:
+        description: "约束与禁止项"
+        required: false
+        type: string
+      plan_task_target:
+        description: "计划任务数（期望，默认 5）"
+        required: false
+        default: "5"
+        type: string
+      plan_task_max:
+        description: "计划任务最大条数（默认 8）"
+        required: false
+        default: "8"
+        type: string
+      additional:
+        description: "补充信息"
+        required: false
+        type: string
+
+permissions:
+  issues: write
+
+jobs:
+  create-issue:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install dependencies
+        run: cd .github/scripts && npm install
+
+      - name: Validate AGENT_GH_TOKEN
+        run: |
+          if [ -z "${{ secrets.AGENT_GH_TOKEN }}" ]; then
+            echo "AGENT_GH_TOKEN is required to create issues via PAT." >&2
+            exit 1
+          fi
+
+      - name: Create agent request issue
+        id: create_issue
+        run: node .github/scripts/dispatch-agent-request-intake.js
+        env:
+          AGENT_GH_TOKEN: ${{ secrets.AGENT_GH_TOKEN }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+          DISPATCH_TITLE: ${{ inputs.title }}
+          DISPATCH_BACKGROUND: ${{ inputs.background }}
+          DISPATCH_SCOPE_IN: ${{ inputs.scope_in }}
+          DISPATCH_SCOPE_OUT: ${{ inputs.scope_out }}
+          DISPATCH_ACCEPTANCE: ${{ inputs.acceptance }}
+          DISPATCH_CONSTRAINTS: ${{ inputs.constraints }}
+          DISPATCH_PLAN_TASK_TARGET: ${{ inputs.plan_task_target }}
+          DISPATCH_PLAN_TASK_MAX: ${{ inputs.plan_task_max }}
+          DISPATCH_ADDITIONAL: ${{ inputs.additional }}
+
+      - name: Write summary
+        run: |
+          echo "Created issue #${{ steps.create_issue.outputs.issue_number }}"
+          echo "URL: ${{ steps.create_issue.outputs.issue_url }}"

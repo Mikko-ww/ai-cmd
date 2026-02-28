@@ -1,0 +1,74 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "FlowMind Plan Contract v1",
+  "type": "object",
+  "required": [
+    "tasks"
+  ],
+  "additionalProperties": true,
+  "properties": {
+    "tasks": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": [
+          "id",
+          "title",
+          "level",
+          "deps",
+          "acceptance"
+        ],
+        "additionalProperties": true,
+        "properties": {
+          "id": {
+            "type": "string",
+            "pattern": "^task-[a-z0-9][a-z0-9-]{0,62}$"
+          },
+          "title": {
+            "type": "string",
+            "minLength": 1
+          },
+          "level": {
+            "type": "string",
+            "enum": [
+              "l1",
+              "l2",
+              "l3"
+            ]
+          },
+          "deps": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "pattern": "^task-[a-z0-9][a-z0-9-]{0,62}$"
+            }
+          },
+          "acceptance": {
+            "type": "string",
+            "minLength": 1
+          },
+          "notes": {
+            "type": "string"
+          },
+          "model": {
+            "type": "string",
+            "minLength": 1
+          }
+        }
+      }
+    }
+  },
+  "x-key-pattern": "^[a-z][a-z0-9_]*$",
+  "x-forbidden-keys": [
+    "status",
+    "issue",
+    "pr",
+    "dependencies",
+    "acceptance_criteria",
+    "risk_level",
+    "依赖",
+    "验收标准",
+    "风险等级"
+  ]
+}

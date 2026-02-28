@@ -1,0 +1,107 @@
+# ============================================================================
+# Agent PR Router Workflow
+# ============================================================================
+# 作用:
+# - 作为 PR 事件路由器，按 marker 将 spec/plan/task PR 分发到对应处理脚本。
+# 触发:
+# - pull_request.opened / synchronize / closed。
+# 执行:
+# - identify-pr-type.js 识别 PR 类型与 parent/task 元数据
+# - spec merged -> handle-spec-merge.js（进入 plan 阶段）
+# - plan merged -> handle-plan-merge.js（校验后触发 task creator）
+# - task opened/synchronize -> handle-task-pr-progress.js + trigger-ci.js
+# - task merged -> handle-task-pr-merge.js（标记 done 并派发下一个任务）
+# ============================================================================
+
+name: Agent PR Router
+run-name: "Agent PR Router • PR #${{ github.event.pull_request.number }} • ${{ github.event.pull_request.title }}"
+
+on:
+  pull_request:
+    types: [opened, synchronize, closed]
+
+permissions:
+  contents: read
+  pull-requests: write
+  issues: write
+  checks: write
+
+jobs:
+  route:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install dependencies
+        run: cd .github/scripts && npm install
+
+      - name: Identify PR type
+        id: identify
+        run: node .github/scripts/identify-pr-type.js
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          PR_BODY: ${{ github.event.pull_request.body }}
+          HEAD_REF: ${{ github.event.pull_request.head.ref }}
+          PR_AUTHOR: ${{ github.event.pull_request.user.login }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+
+      - name: Handle Spec PR merge
+        if: steps.identify.outputs.pr_type == 'spec' && github.event.action == 'closed' && github.event.pull_request.merged == true
+        run: node .github/scripts/handle-spec-merge.js
+        env:
+          AGENT_GH_TOKEN: ${{ secrets.AGENT_GH_TOKEN }}
+          PARENT_ISSUE: ${{ steps.identify.outputs.parent_issue }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+
+      - name: Handle Plan PR merge
+        if: steps.identify.outputs.pr_type == 'plan' && github.event.action == 'closed' && github.event.pull_request.merged == true
+        run: node .github/scripts/handle-plan-merge.js
+        env:
+          AGENT_GH_TOKEN: ${{ secrets.AGENT_GH_TOKEN }}
+          PARENT_ISSUE: ${{ steps.identify.outputs.parent_issue }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+          BASE_REF: ${{ github.event.pull_request.base.ref }}
+          GITHUB_REF: ${{ github.ref }}
+
+      - name: Update task runtime on PR progress
+        if: steps.identify.outputs.pr_type == 'task' && (github.event.action == 'opened' || github.event.action == 'synchronize')
+        run: node .github/scripts/handle-task-pr-progress.js
+        env:
+          AGENT_GH_TOKEN: ${{ secrets.AGENT_GH_TOKEN }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          PARENT_ISSUE: ${{ steps.identify.outputs.parent_issue }}
+          TASK_KEY: ${{ steps.identify.outputs.task_key }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+
+      - name: Trigger CI for task PRs
+        if: steps.identify.outputs.pr_type == 'task' && (github.event.action == 'opened' || github.event.action == 'synchronize')
+        run: node .github/scripts/trigger-ci.js
+        env:
+          AGENT_GH_TOKEN: ${{ secrets.AGENT_GH_TOKEN }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          HEAD_REF: ${{ github.event.pull_request.head.ref }}
+          PARENT_ISSUE: ${{ steps.identify.outputs.parent_issue }}
+          TASK_KEY: ${{ steps.identify.outputs.task_key }}
+          BASE_REF: ${{ github.event.pull_request.base.ref }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+          GITHUB_REF: ${{ github.ref }}
+
+      - name: Handle task PR merge
+        if: steps.identify.outputs.pr_type == 'task' && github.event.action == 'closed' && github.event.pull_request.merged == true
+        run: node .github/scripts/handle-task-pr-merge.js
+        env:
+          AGENT_GH_TOKEN: ${{ secrets.AGENT_GH_TOKEN }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          PARENT_ISSUE: ${{ steps.identify.outputs.parent_issue }}
+          TASK_KEY: ${{ steps.identify.outputs.task_key }}
+          BASE_REF: ${{ github.event.pull_request.base.ref }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+          GITHUB_REF: ${{ github.ref }}
