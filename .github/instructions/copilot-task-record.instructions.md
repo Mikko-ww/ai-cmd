@@ -5,8 +5,8 @@ applyTo: '**'
 # Task Summary Rules (简洁)
 
 ## 1. Output Location
-Agent must save all task summary files to the `.worktree/` directory.  
-Do **not** place them in the root or other paths.
+Agent must save all task summary files to the `.worktree/` directory.The summary must be described in Chinese. 
+in the root or other paths.
 
 ## 2. File Naming
 File name must follow this format:
