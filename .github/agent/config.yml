@@ -4,7 +4,7 @@ copilot:
     - "Copilot"
     - "copilot-swe-agent"
     - "copilot-swe-agent[bot]"
-  base_branch: "main"
+  base_branch: "agent-dev"
   model: "Auto"
   requirement_model: "Claude Opus 4.6"
   model_catalog:
