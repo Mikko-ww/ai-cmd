@@ -6,7 +6,7 @@ copilot:
     - "copilot-swe-agent[bot]"
   base_branch: "agent-dev"
   model: "Auto"
-  requirement_model: "Claude Opus 4.6"
+  requirement_model: "GPT-5.3-Codex"
   model_catalog:
     - name: "Auto"
       capability: "Copilot auto-selects the best model based on availability and helps reduce rate limiting"
