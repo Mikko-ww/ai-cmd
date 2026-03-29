@@ -90,7 +90,7 @@ def test_provider_command(provider_name: str):
 def set_api_key_command(provider: str, api_key: str):
     """设置提供商的 API Key"""
     try:
-        from ..keyring_manager import KeyringManager
+        from ..keyring_manager import KeyringManager, _env_var_name
         from ..llm_router import LLMRouter
 
         router = LLMRouter()
@@ -101,12 +101,28 @@ def set_api_key_command(provider: str, api_key: str):
             print(f"Supported providers: {', '.join(supported_providers)}")
             return
 
+        if not KeyringManager.is_keyring_available():
+            env_var = _env_var_name(provider)
+            print("⚠ System keyring is not available in this environment (e.g. WSL).")
+            print("  Please set the API key via environment variable instead:")
+            print(f"    export {env_var}={api_key}")
+            print("  To make it permanent, add the above line to your ~/.bashrc or ~/.zshrc.")
+            print("\nNext steps:")
+            print(
+                f"  1. Set this as default provider: aicmd --set-config default_provider {provider}"
+            )
+            print(
+                f"  2. Configure model: aicmd --set-config providers.{provider}.model <model_name>"
+            )
+            print(f"  3. Test the configuration: aicmd --test-provider {provider}")
+            return
+
         success = KeyringManager.set_api_key(provider, api_key)
 
         if success:
             print(f"✓ API key set successfully for provider: {provider}")
-            print(f"  The key is stored securely in your system keyring")
-            print(f"\nNext steps:")
+            print("  The key is stored securely in your system keyring")
+            print("\nNext steps:")
             print(
                 f"  1. Set this as default provider: aicmd --set-config default_provider {provider}"
             )
@@ -115,7 +131,10 @@ def set_api_key_command(provider: str, api_key: str):
             )
             print(f"  3. Test the configuration: aicmd --test-provider {provider}")
         else:
+            env_var = _env_var_name(provider)
             print(f"✗ Failed to set API key for provider: {provider}")
+            print("  If keyring is unavailable, use environment variable instead:")
+            print(f"    export {env_var}=<your_api_key>")
 
     except Exception as e:
         print(f"Error setting API key: {e}")
@@ -183,23 +202,38 @@ def delete_api_key_command(provider: str):
 def list_api_keys_command():
     """列出所有已配置 API Key 的提供商"""
     try:
-        from ..keyring_manager import KeyringManager
+        from ..keyring_manager import KeyringManager, _env_var_name
+        from ..llm_router import LLMRouter
 
         providers_with_keys = KeyringManager.list_providers_with_keys()
+        known_providers = LLMRouter().list_providers()
 
         print("=== Configured API Keys ===")
 
+        if not KeyringManager.is_keyring_available():
+            print("⚠ System keyring is not available. Reading from environment variables.")
+            print(
+                "  Set keys via: export AICMD_API_KEY_<PROVIDER_UPPER>=<your_key>"
+            )
+            print()
+
         if providers_with_keys:
-            print(f"Providers with API keys configured:")
+            print("Providers with API keys configured:")
             for provider in providers_with_keys:
-                print(f"  ✓ {provider}")
+                source = "(env var)" if not KeyringManager.is_keyring_available() else "(keyring)"
+                print(f"  ✓ {provider} {source}")
             print(f"\nTotal: {len(providers_with_keys)} provider(s)")
         else:
             print("No API keys configured yet")
             print("\nTo set an API key:")
-            print("  aicmd --set-api-key <provider> <your_api_key>")
+            if KeyringManager.is_keyring_available():
+                print("  aicmd --set-api-key <provider> <your_api_key>")
+            else:
+                print("  System keyring is not available. Use environment variables:")
+                for p in known_providers:
+                    print(f"    export {_env_var_name(p)}=<your_key>")
             print("\nSupported providers:")
-            print("  openrouter, openai, deepseek, xai, gemini, qwen")
+            print(f"  {', '.join(known_providers)}")
 
     except Exception as e:
         print(f"Error listing API keys: {e}")
