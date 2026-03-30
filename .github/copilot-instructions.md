@@ -70,6 +70,6 @@ aicmd "list files" --force-api        # 绕过缓存测试 API
 
 ## 关键参考文件
 
-- [setting_template.json](src/aicmd/setting_template.json)：完整配置结构（版本 1.0.2）
+- [setting_template.json](src/aicmd/setting_template.json)：完整配置结构（版本 1.0.3）
 - [AGENTS.md](AGENTS.md)：开发规范与工作流详情
 - [conftest.py](tests/conftest.py)：测试 fixture 模式

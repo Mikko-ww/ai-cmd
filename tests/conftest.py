@@ -108,7 +108,7 @@ def sample_config() -> dict:
     提供示例配置数据
     """
     return {
-        "version": "1.0.2",
+        "version": "1.0.3",
         "basic": {
             "interactive_mode": False,
             "cache_enabled": True,
