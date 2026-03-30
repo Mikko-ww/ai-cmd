@@ -277,6 +277,7 @@ class CommandHandler:
             similarity = 1.0  # 精确匹配
         else:
             # 低置信度：调用API获取新命令
+            similarity = 0.0
             interactive_manager.display_info("API 请求中...", color="blue")
             api_command = self.get_command_original(prompt, base_url=base_url)
             if not api_command or api_command.startswith("Error:"):

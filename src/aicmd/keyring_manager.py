@@ -40,11 +40,17 @@ except ImportError:
     _KEYRING_AVAILABLE = False
 
 if not _KEYRING_AVAILABLE:
-    logger.warning(
-        "keyring 后端不可用（常见于 WSL/无图形界面的 Linux 环境）。"
-        "API Key 将从环境变量读取：AICMD_API_KEY_<PROVIDER_UPPER>。"
-        "例如：export AICMD_API_KEY_OPENAI=your_key"
+    # 检查是否已通过环境变量配置了 API Key
+    _has_env_keys = any(
+        key.startswith("AICMD_API_KEY_") for key in os.environ
     )
+    # 如果没有设置则打印警告提示用户设置环境变量
+    if not _has_env_keys:
+        logger.warning(
+            "keyring 后端不可用（常见于 WSL/无图形界面的 Linux 环境）。"
+            "API Key 将从环境变量读取：AICMD_API_KEY_<PROVIDER_UPPER>。"
+            "例如：export AICMD_API_KEY_OPENAI=your_key"
+        )
 
 
 def _env_var_name(provider: str) -> str:
